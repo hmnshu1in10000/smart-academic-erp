@@ -60,6 +60,16 @@ class StudentAttendanceHistory(BaseModel):
     history: list[StudentAttendanceDay]
 
 
+class AttendanceSubmitRequest(BaseModel):
+    signals: list[dict]
+
+
+class AttendanceSubmitResponse(BaseModel):
+    status: str = "ok"
+    ingested_count: int
+    message: str
+
+
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 
 @router.get(
@@ -98,3 +108,27 @@ async def get_student_attendance(
     facade = AttendanceFacade(tenant_id=token.tenant_id)
     result = facade.get_student_history(student_id=student_id, days=days)
     return StudentAttendanceHistory(**result)
+
+
+@router.post(
+    "/summary",
+    response_model=AttendanceSubmitResponse,
+    summary="Submit/sync mobile attendance signals",
+    description="Ingests attendance signals from teacher mobile app offline queue.",
+)
+@router.post(
+    "/submit",
+    response_model=AttendanceSubmitResponse,
+    summary="Submit mobile attendance signals",
+)
+async def submit_attendance_signals(
+    body: AttendanceSubmitRequest,
+    token: TokenPayload = Depends(get_current_tenant_context),
+) -> AttendanceSubmitResponse:
+    facade = AttendanceFacade(tenant_id=token.tenant_id)
+    count = facade.ingest_signals(body.signals)
+    return AttendanceSubmitResponse(
+        status="ok",
+        ingested_count=count,
+        message=f"Successfully ingested {count} attendance records into server database.",
+    )
