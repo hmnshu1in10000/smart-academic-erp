@@ -1,0 +1,76 @@
+# AI Engine Evaluation Q&A Test Pairs
+# Source of truth: ARCHITECTURE.md Module 8.0 Evaluation Suite
+
+eval_pairs:
+  - id: QA-001
+    question: "How many students are in Class 10-A?"
+    expected_tables:
+      - students
+      - class_sections
+    expected_sql_pattern: "SELECT count.*FROM students.*JOIN class_sections.*Class 10-A"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-002
+    question: "How many students were absent in Class 10-A?"
+    expected_tables:
+      - attendance_records
+      - class_sections
+    expected_sql_pattern: "SELECT count.*FROM attendance_records.*Class 10-A.*'A'"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-003
+    question: "Show all overdue fee invoices"
+    expected_tables:
+      - fee_invoices
+    expected_sql_pattern: "SELECT.*FROM fee_invoices.*status = 'OVERDUE'"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-004
+    question: "What is the total fee collected so far?"
+    expected_tables:
+      - fee_invoices
+    expected_sql_pattern: "SELECT sum\\(amount_paid\\).*FROM fee_invoices"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-005
+    question: "List students with blood group O+"
+    expected_tables:
+      - students
+    expected_sql_pattern: "SELECT.*FROM students.*blood_group = 'O\\+'"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-006
+    question: "How many class sections exist?"
+    expected_tables:
+      - class_sections
+    expected_sql_pattern: "SELECT count.*FROM class_sections"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-007
+    question: "What is the attendance summary breakdown by status?"
+    expected_tables:
+      - attendance_records
+    expected_sql_pattern: "SELECT status, count.*FROM attendance_records.*GROUP BY status"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-008
+    question: "Show list of students in Class 10-B"
+    expected_tables:
+      - students
+      - class_sections
+    expected_sql_pattern: "SELECT.*FROM students.*JOIN class_sections.*Class 10-B"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-009
+    question: "How many fee invoices are paid?"
+    expected_tables:
+      - fee_invoices
+    expected_sql_pattern: "SELECT count.*FROM fee_invoices.*status = 'PAID'"
+    tenant_id: "greenwood-high-001"
+
+  - id: QA-010
+    question: "List top 5 students by roll number"
+    expected_tables:
+      - students
+    expected_sql_pattern: "SELECT.*FROM students.*ORDER BY roll_number.*LIMIT 5"
+    tenant_id: "greenwood-high-001"

@@ -1,0 +1,13 @@
+# Environment & Secrets
+.env
+venv/
+
+# Logs
+.logs/
+
+# IDE / Agent configurations
+.vscode/
+.antigravity/
+__pycache__/
+*.pyc
+node_modules/
