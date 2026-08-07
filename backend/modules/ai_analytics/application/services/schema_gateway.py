@@ -87,12 +87,14 @@ ACTIVE CLASSES IN DB: Class 10-A (Grade 10), Class 10-B (Grade 10). (Note: Green
    - status: VARCHAR(16) ('PAID', 'PENDING', 'OVERDUE', 'PARTIAL')
    - payment_method: VARCHAR(16) ('UPI', 'CARD', 'CASH', 'BANK_TRANSFER', 'CHEQUE')
 
-RELATIONSHIPS:
+RELATIONSHIPS & JOIN NOTES:
 - students.class_section_id = class_sections.id
 - attendance_records.student_id = students.id
 - attendance_records.class_section_id = class_sections.id
 - fee_invoices.student_id = students.id
 - fee_invoices.fee_structure_id = fee_structures.id
+- CRITICAL: grade_level exists ONLY in class_sections. To filter students by Grade/Grade level, you MUST JOIN class_sections!
+- CRITICAL COLUMN NOTE: fee_invoices uses amount_due and amount_paid. Column 'amount' exists ONLY on fee_structures (fs.amount), NOT on fee_invoices (f.amount)!
 """
 
     def get_schema_context(self) -> str:

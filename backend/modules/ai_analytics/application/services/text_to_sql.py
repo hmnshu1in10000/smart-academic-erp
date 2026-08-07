@@ -58,13 +58,13 @@ class TextToSQLService:
         elif role_upper == "STUDENT" and user_id:
             security_instruction = (
                 f"\nCRITICAL SECURITY RULE: The user is a STUDENT with user_id = '{user_id}'. "
-                f"Restrict queries strictly to s.email = '{user_id}' or s.id = '{user_id}'."
+                f"Restrict queries strictly to (s.email = '{user_id}' OR s.id = '{user_id}' OR s.guardian_user_id = '{user_id}')."
             )
 
         if security_instruction:
             sys_prompt += f"\n{security_instruction}\n"
 
-        user_prompt = f"Tenant ID: '{tenant_id}'\nUser Role: '{role_upper}'\nUser ID: '{user_id}'\nUser Question: {query}\n\nGenerated SQLite SQL:"
+        user_prompt = f"Tenant ID: '{tenant_id}'\nUser Role: '{role_upper}'\nUser ID: '{user_id}'\nCurrent Date: '2026-08-07'\nUser Question: {query}\n\nGenerated SQLite SQL:"
 
         sql = self._call_llm(sys_prompt, user_prompt, query, tenant_id, user_id, role_upper)
         cleaned_sql = self._clean_sql(sql, tenant_id)
@@ -85,6 +85,10 @@ class TextToSQLService:
         sql = sql.strip()
         if sql.endswith(";"):
             sql = sql[:-1].strip()
+
+        # Fix column hallucination: fee_invoices does NOT have column 'amount'
+        sql = re.sub(r"(?i)\bf\.amount\b", "f.amount_due", sql)
+        sql = re.sub(r"(?i)\bfee_invoices\.amount\b", "fee_invoices.amount_due", sql)
 
         if "grade_level" in sql.lower() and "class_sections" not in sql.lower() and "from students" in sql.lower():
             sql = re.sub(r"(?i)\bFROM\s+students\b", "FROM students JOIN class_sections ON students.class_section_id = class_sections.id", sql)
