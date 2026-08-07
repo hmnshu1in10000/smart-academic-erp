@@ -49,7 +49,11 @@ export const LoginScreen: React.FC = () => {
       });
     } catch (err: any) {
       console.error('Mobile login error:', err);
-      setError(err.response?.data?.detail || 'Invalid teacher credentials.');
+      if (err.code === 'ERR_NETWORK' || !err.response) {
+        setError('Network Error: Could not connect to backend server. Ensure backend server is running on http://localhost:8000.');
+      } else {
+        setError(err.response?.data?.detail || 'Invalid teacher credentials.');
+      }
     } finally {
       setLoading(false);
     }

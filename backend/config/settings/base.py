@@ -54,7 +54,8 @@ PROJECT_VERSION: str = "0.1.0"
 
 # ── CORS (dev allows all origins) ─────────────────────────────────────────────
 ALLOWED_ORIGINS: list[str] = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080"
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:8080,http://localhost:8081,http://localhost:8082,http://localhost:19006,http://127.0.0.1:8081,http://127.0.0.1:3000"
 ).split(",")
 
 # ── Logging ───────────────────────────────────────────────────────────────────
