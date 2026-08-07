@@ -86,6 +86,10 @@ class TextToSQLService:
         if sql.endswith(";"):
             sql = sql[:-1].strip()
 
+        if "grade_level" in sql.lower() and "class_sections" not in sql.lower() and "from students" in sql.lower():
+            sql = re.sub(r"(?i)\bFROM\s+students\b", "FROM students JOIN class_sections ON students.class_section_id = class_sections.id", sql)
+            sql = re.sub(r"(?i)\bgrade_level\b", "class_sections.grade_level", sql)
+
         if "tenant_id" not in sql.lower():
             if "where" in sql.lower():
                 sql = re.sub(r"(?i)\bWHERE\b", f"WHERE tenant_id = '{tenant_id}' AND ", sql, count=1)
