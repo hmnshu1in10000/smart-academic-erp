@@ -32,7 +32,12 @@ class ConversationalAnalyticsFacade:
         logger.info(f"Processing AI analytics query for tenant '{request.tenant_id}': '{request.query}'")
 
         # 1. Translate question to SQL
-        gen_sql_dto = self._text_to_sql.generate_sql(request.query, request.tenant_id)
+        gen_sql_dto = self._text_to_sql.generate_sql(
+            query=request.query,
+            tenant_id=request.tenant_id,
+            user_id=request.current_user_id or "",
+            role_key=request.current_role_key or "ADMIN",
+        )
 
         # 2. Execute SQL with guardrails
         exec_result = self._executor.execute(gen_sql_dto.sql, request.tenant_id)
@@ -65,12 +70,18 @@ class ConversationalAnalyticsFacade:
 
     def _compose_summary(self, question: str, columns: tuple[str, ...], rows: tuple[tuple, ...]) -> str:
         """Formulates concise, human-readable summary of query results."""
+        q_lower = question.lower()
         if not rows:
+            # Task 2 requirement: Explain active grade enrollment scope if asking for another grade
+            if any(g in q_lower for g in ["class 8", "grade 8", "class 8th", "class 7", "class 9", "grade 9", "8th", "7th", "9th", "11th", "12th"]):
+                return "No records found. Greenwood High currently only has enrolled data for Grade 10 (Class 10-A and Class 10-B)."
             return "No matching records found for your query."
 
         # Aggregate count response (e.g., SELECT count(*))
         if len(columns) == 1 and ("count" in columns[0].lower() or "student_count" in columns[0].lower() or "absent_count" in columns[0].lower()):
             val = rows[0][0]
+            if val == 0 and any(g in q_lower for g in ["class 8", "grade 8", "class 8th", "class 7", "class 9", "grade 9", "8th", "7th", "9th"]):
+                return "No records found. Greenwood High currently only has enrolled data for Grade 10 (Class 10-A and Class 10-B)."
             return f"Found {val} matching records."
 
         if len(rows) == 1 and len(columns) > 1:

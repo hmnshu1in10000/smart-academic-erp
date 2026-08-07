@@ -89,6 +89,7 @@ class Student(Base):
     guardian_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     guardian_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     guardian_relation: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    guardian_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     enrollment_status: Mapped[str] = mapped_column(
         String(16), default="ACTIVE"
     )  # ACTIVE | TRANSFERRED | ARCHIVED

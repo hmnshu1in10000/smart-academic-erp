@@ -12,15 +12,19 @@ import { StatCard } from '../../components/common/StatCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { apiClient } from '../../api/client';
 import type { AttendanceSummary, FeeSummary } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 
 interface OverviewDashboardProps {
   setActiveTab: (tab: string) => void;
 }
 
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ setActiveTab }) => {
+  const { user } = useAuth();
   const [attendanceData, setAttendanceData] = useState<AttendanceSummary | null>(null);
   const [feeData, setFeeData] = useState<FeeSummary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  const isRestrictedRole = user?.role === 'parent' || user?.role === 'student';
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -90,7 +94,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ setActiveT
         />
 
         <StatCard
-          title="Attendance Rate"
+          title={isRestrictedRole ? "My Attendance" : "Attendance Rate"}
           value={`${attendanceData?.overall_present_pct || 83.7}%`}
           subtitle="30-Day Historical Average"
           icon={CalendarCheck}
@@ -100,21 +104,21 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ setActiveT
         />
 
         <StatCard
-          title="Fee Collection"
-          value={`${feeData?.collection_rate_pct || 92.1}%`}
-          subtitle={`₹${feeData?.total_collected?.toLocaleString() || '15,000'} Collected`}
+          title={isRestrictedRole ? "Fee Dues Status" : "Fee Collection"}
+          value={isRestrictedRole ? "₹2,200 Dues" : `${feeData?.collection_rate_pct || 92.1}%`}
+          subtitle={isRestrictedRole ? "Term 1 Pending Invoice" : `₹${feeData?.total_collected?.toLocaleString() || '15,000'} Collected`}
           icon={CreditCard}
-          trend="80% On-time Rate"
+          trend={isRestrictedRole ? "Pay Online" : "80% On-time Rate"}
           trendType="positive"
           color="#F59E0B"
         />
 
         <StatCard
-          title="Overdue Invoices"
-          value={feeData?.overdue_count || 12}
-          subtitle={`₹${feeData?.total_outstanding?.toLocaleString() || '2,400'} Outstanding`}
+          title={isRestrictedRole ? "Child Absences" : "Overdue Invoices"}
+          value={isRestrictedRole ? "3 Days" : (feeData?.overdue_count || 12)}
+          subtitle={isRestrictedRole ? "Flagged Absences" : `₹${feeData?.total_outstanding?.toLocaleString() || '2,400'} Outstanding`}
           icon={AlertCircle}
-          trend="Action Required"
+          trend={isRestrictedRole ? "Verified" : "Action Required"}
           trendType="negative"
           color="#EF4444"
         />

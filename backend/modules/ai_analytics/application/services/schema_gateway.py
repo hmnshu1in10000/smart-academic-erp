@@ -29,6 +29,8 @@ class ReadOnlySchemaGateway:
     SCHEMA_PROMPT = """
 TABLE SCHEMAS:
 
+ACTIVE CLASSES IN DB: Class 10-A (Grade 10), Class 10-B (Grade 10). (Note: Greenwood High currently only has enrolled data for Grade 10).
+
 1. class_sections:
    - id: VARCHAR(36) PRIMARY KEY
    - tenant_id: VARCHAR(64)
@@ -51,6 +53,7 @@ TABLE SCHEMAS:
    - guardian_name: VARCHAR(128)
    - guardian_phone: VARCHAR(20)
    - guardian_relation: VARCHAR(32)
+   - guardian_user_id: VARCHAR(64) (e.g. 'parent-of-student-01@demo.school')
    - enrollment_status: VARCHAR(16) ('ACTIVE', 'TRANSFERRED', 'ARCHIVED')
 
 3. attendance_records:

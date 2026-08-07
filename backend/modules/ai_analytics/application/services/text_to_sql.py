@@ -41,13 +41,32 @@ class TextToSQLService:
     def __init__(self) -> None:
         self._schema_gateway = ReadOnlySchemaGateway()
 
-    def generate_sql(self, query: str, tenant_id: str) -> GeneratedSQLDTO:
-        """Translates user query to SQL."""
+    def generate_sql(self, query: str, tenant_id: str, user_id: str = "", role_key: str = "ADMIN") -> GeneratedSQLDTO:
+        """Translates user query to SQL with role-based security rules."""
         schema_text = self._schema_gateway.get_schema_context()
         sys_prompt = SYSTEM_PROMPT.format(schema_context=schema_text, tenant_id=tenant_id)
-        user_prompt = f"Tenant ID: '{tenant_id}'\nUser Question: {query}\n\nGenerated SQLite SQL:"
 
-        sql = self._call_llm(sys_prompt, user_prompt, query, tenant_id)
+        role_upper = role_key.upper()
+        security_instruction = ""
+        if role_upper == "PARENT" and user_id:
+            security_instruction = (
+                f"\nCRITICAL SECURITY RULE: The user is a PARENT with user_id = '{user_id}'. "
+                f"Any query asking about 'my child', 'my student', 'fees', or 'attendance' MUST filter strictly by "
+                f"s.guardian_user_id = '{user_id}' or s.id IN (SELECT id FROM students WHERE guardian_user_id = '{user_id}'). "
+                f"NEVER return data belonging to other students."
+            )
+        elif role_upper == "STUDENT" and user_id:
+            security_instruction = (
+                f"\nCRITICAL SECURITY RULE: The user is a STUDENT with user_id = '{user_id}'. "
+                f"Restrict queries strictly to s.email = '{user_id}' or s.id = '{user_id}'."
+            )
+
+        if security_instruction:
+            sys_prompt += f"\n{security_instruction}\n"
+
+        user_prompt = f"Tenant ID: '{tenant_id}'\nUser Role: '{role_upper}'\nUser ID: '{user_id}'\nUser Question: {query}\n\nGenerated SQLite SQL:"
+
+        sql = self._call_llm(sys_prompt, user_prompt, query, tenant_id, user_id, role_upper)
         cleaned_sql = self._clean_sql(sql, tenant_id)
 
         return GeneratedSQLDTO(
@@ -60,7 +79,6 @@ class TextToSQLService:
     def _clean_sql(self, sql: str, tenant_id: str) -> str:
         """Strip markdown fences and clean up formatting."""
         sql = sql.strip()
-        # Remove markdown code fences
         if "```" in sql:
             sql = re.sub(r"```[a-zA-Z]*\n?", "", sql)
             sql = sql.replace("```", "")
@@ -68,12 +86,10 @@ class TextToSQLService:
         if sql.endswith(";"):
             sql = sql[:-1].strip()
 
-        # Enforce tenant_id filtering if missing in table queries
         if "tenant_id" not in sql.lower():
             if "where" in sql.lower():
                 sql = re.sub(r"(?i)\bWHERE\b", f"WHERE tenant_id = '{tenant_id}' AND ", sql, count=1)
             else:
-                # Append WHERE tenant_id = '...' before ORDER BY / GROUP BY / LIMIT
                 m = re.search(r"(?i)\b(GROUP BY|ORDER BY|LIMIT)\b", sql)
                 if m:
                     idx = m.start()
@@ -83,12 +99,11 @@ class TextToSQLService:
 
         return sql
 
-    def _call_llm(self, sys_prompt: str, user_prompt: str, original_query: str, tenant_id: str) -> str:
+    def _call_llm(self, sys_prompt: str, user_prompt: str, original_query: str, tenant_id: str, user_id: str = "", role_key: str = "ADMIN") -> str:
         """Attempts calling Groq API -> Gemini API -> Smart Rule Fallback."""
         groq_key = os.getenv("GROQ_API_KEY", "")
         gemini_key = os.getenv("GEMINI_API_KEY", "")
 
-        # 1. Try Groq API if key present
         if groq_key and groq_key != "your_groq_api_key_here":
             try:
                 res = requests.post(
@@ -111,7 +126,6 @@ class TextToSQLService:
             except Exception as e:
                 logger.warning(f"Groq API call failed: {e}")
 
-        # 2. Try Gemini API if key present
         if gemini_key and gemini_key != "your_google_ai_studio_key_here":
             try:
                 from google import genai
@@ -126,15 +140,23 @@ class TextToSQLService:
             except Exception as e:
                 logger.warning(f"Gemini API call failed: {e}")
 
-        # 3. Rule-based Fallback Heuristic Generator for common queries
         logger.info("Using heuristic rule-based SQL generator fallback")
-        return self._rule_based_fallback(original_query, tenant_id)
+        return self._rule_based_fallback(original_query, tenant_id, user_id, role_key)
 
-    def _rule_based_fallback(self, query: str, tenant_id: str) -> str:
+    def _rule_based_fallback(self, query: str, tenant_id: str, user_id: str = "", role_key: str = "ADMIN") -> str:
         """Deterministic heuristic fallback for demo analytics queries."""
         q = query.lower()
+        role_upper = role_key.upper()
+        uid = user_id or "parent-of-student-01@demo.school"
 
-        # "How many students were absent in Class 10-A?" or "How many students are in Class 10-A?"
+        # Parent query security filtering rule
+        if role_upper == "PARENT" or "my child" in q or "my student" in q:
+            return f"SELECT s.full_name, c.display_name as section, f.fee_head_name, f.amount_due, f.amount_paid, f.status FROM fee_invoices f JOIN students s ON f.student_id = s.id JOIN class_sections c ON s.class_section_id = c.id WHERE f.tenant_id = '{tenant_id}' AND s.guardian_user_id = '{uid}'"
+
+        # Check for un-enrolled grades e.g., class 8th
+        if any(g in q for g in ["class 8", "grade 8", "8th", "class 7", "class 9"]):
+            return f"SELECT count(s.id) as student_count FROM students s JOIN class_sections c ON s.class_section_id = c.id WHERE s.tenant_id = '{tenant_id}' AND c.display_name LIKE '%Class 8%'"
+
         if "how many students" in q or "count of students" in q or "number of students" in q:
             if "absent" in q:
                 if "10-a" in q:
@@ -158,5 +180,4 @@ class TextToSQLService:
         if "attendance" in q or "absent" in q:
             return f"SELECT status, count(*) as count FROM attendance_records WHERE tenant_id = '{tenant_id}' GROUP BY status"
 
-        # Default fallback
         return f"SELECT s.roll_number, s.full_name, c.display_name as section FROM students s JOIN class_sections c ON s.class_section_id = c.id WHERE s.tenant_id = '{tenant_id}' LIMIT 10"

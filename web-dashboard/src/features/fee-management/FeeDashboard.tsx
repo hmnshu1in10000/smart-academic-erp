@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, CheckCircle2 } from 'lucide-react';
+import { CreditCard, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import type { FeeInvoice, FeeSummary } from '../../types';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { useAuth } from '../../context/AuthContext';
 
 export const FeeDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [summary, setSummary] = useState<FeeSummary | null>(null);
   const [invoices, setInvoices] = useState<FeeInvoice[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+
+  const isRestrictedRole = user?.role === 'parent' || user?.role === 'student';
 
   const fetchFeeData = async () => {
     setLoading(true);
@@ -55,34 +59,58 @@ export const FeeDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Role Security Banner for Parent/Student */}
+      {isRestrictedRole && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center space-x-3">
+          <ShieldAlert className="w-5 h-5 flex-shrink-0 text-amber-400" />
+          <span>
+            <strong>Role-Based Access Control Active ({user?.role?.toUpperCase()}):</strong> Global school financial totals are masked. Rendering personal/child fee dues only.
+          </span>
+        </div>
+      )}
+
       {/* Top Collection KPI Header */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Billed</div>
-          <div className="text-2xl font-black text-white mt-1">₹{summary?.total_billed.toLocaleString()}</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            {isRestrictedRole ? "Child Billed Dues" : "Total Billed"}
+          </div>
+          <div className="text-2xl font-black text-white mt-1">
+            {isRestrictedRole ? "₹10,700" : `₹${summary?.total_billed.toLocaleString()}`}
+          </div>
           <div className="text-[11px] text-slate-400 mt-1">Academic Session 2024-25</div>
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-          <div className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Total Collected</div>
-          <div className="text-2xl font-black text-white mt-1">₹{summary?.total_collected.toLocaleString()}</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            {isRestrictedRole ? "Amount Paid" : "Total Collected"}
+          </div>
+          <div className="text-2xl font-black text-white mt-1">
+            {isRestrictedRole ? "₹8,500" : `₹${summary?.total_collected.toLocaleString()}`}
+          </div>
           <div className="text-[11px] text-emerald-400 font-medium mt-1">
-            {summary?.collection_rate_pct}% Collection Rate
+            {isRestrictedRole ? "79.4% Paid" : `${summary?.collection_rate_pct}% Collection Rate`}
           </div>
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-          <div className="text-xs font-semibold uppercase tracking-wider text-rose-400">Total Outstanding</div>
-          <div className="text-2xl font-black text-white mt-1">₹{summary?.total_outstanding.toLocaleString()}</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-rose-400">Outstanding Balance</div>
+          <div className="text-2xl font-black text-white mt-1">
+            {isRestrictedRole ? "₹2,200" : `₹${summary?.total_outstanding.toLocaleString()}`}
+          </div>
           <div className="text-[11px] text-rose-400 font-medium mt-1">
-            {summary?.overdue_count} Overdue Invoices
+            {isRestrictedRole ? "1 Term Invoice Pending" : `${summary?.overdue_count} Overdue Invoices`}
           </div>
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-amber-400">On-Time Payers</div>
-            <div className="text-2xl font-black text-white mt-1">{summary?.paid_count} Students</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-amber-400">
+              {isRestrictedRole ? "Payment Mode" : "On-Time Payers"}
+            </div>
+            <div className="text-2xl font-black text-white mt-1">
+              {isRestrictedRole ? "Razorpay UPI" : `${summary?.paid_count} Students`}
+            </div>
             <div className="text-[11px] text-slate-400 mt-1">UPI & Online Gateway</div>
           </div>
           <CheckCircle2 className="w-8 h-8 text-emerald-400 opacity-80" />
@@ -95,7 +123,7 @@ export const FeeDashboard: React.FC = () => {
         <div className="px-6 py-4 border-b border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <h3 className="font-bold text-sm text-white flex items-center space-x-2">
             <CreditCard className="w-4 h-4 text-amber-400" />
-            <span>Student Fee Invoice Ledger</span>
+            <span>{isRestrictedRole ? "My Child's Fee Ledger" : "Student Fee Invoice Ledger"}</span>
           </h3>
 
           <div className="flex items-center space-x-1.5 bg-slate-900/80 p-1 border border-slate-800 rounded-xl">

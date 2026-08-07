@@ -18,6 +18,8 @@ class NLQueryRequestDTO(BaseDTO):
     query: str
     tenant_id: str
     user_role: str = "admin"
+    current_user_id: Optional[str] = None
+    current_role_key: str = "ADMIN"
     limit: int = 500
 
 

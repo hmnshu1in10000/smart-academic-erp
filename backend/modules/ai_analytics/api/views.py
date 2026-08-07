@@ -60,6 +60,8 @@ async def ask_analytics(
         query=body.query,
         tenant_id=tenant_id,
         user_role=token.role,
+        current_user_id=token.sub,
+        current_role_key=token.role.upper(),
     )
 
     ans_dto = facade.ask(req_dto)
