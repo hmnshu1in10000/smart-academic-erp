@@ -109,6 +109,21 @@ async def fee_summary(
     return FeeCollectionSummary(**result)
 
 
+class PayInvoiceRequest(BaseModel):
+    invoice_id: str
+    payment_method: Optional[str] = "UPI"
+
+
+class PayInvoiceResponse(BaseModel):
+    status: str
+    invoice_id: str
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    amount_paid: float
+    currency: str = "INR"
+    receipt_url: str
+
+
 @router.get(
     "/student/{student_id}",
     response_model=StudentFeeLedger,
@@ -121,3 +136,17 @@ async def student_fee_ledger(
     facade = FeesFacade(tenant_id=token.tenant_id)
     result = facade.get_student_ledger(student_id=student_id)
     return StudentFeeLedger(**result)
+
+
+@router.post(
+    "/pay-invoice",
+    response_model=PayInvoiceResponse,
+    summary="Pay Fee Invoice via Free Razorpay Sandbox",
+)
+async def pay_invoice_sandbox(
+    body: PayInvoiceRequest,
+    token: TokenPayload = Depends(get_current_tenant_context),
+) -> PayInvoiceResponse:
+    facade = FeesFacade(tenant_id=token.tenant_id)
+    res = facade.pay_invoice(invoice_id=body.invoice_id, payment_method=body.payment_method or "UPI")
+    return PayInvoiceResponse(**res)

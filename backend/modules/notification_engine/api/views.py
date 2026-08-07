@@ -1,0 +1,50 @@
+"""
+modules/notification_engine/api/views.py
+========================================
+GET /api/v1/notifications/inbox — User Notification Inbox Endpoint
+"""
+from __future__ import annotations
+
+import logging
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from shared_kernel.auth.jwt_utils import TokenPayload, get_current_tenant_context
+from modules.notification_engine.application.services.fcm_provider import InAppNotificationService
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/notifications", tags=["Notifications"])
+
+
+class NotificationItemResponse(BaseModel):
+    id: str
+    user_email: str
+    title: str
+    message: str
+    notification_type: str
+    read: bool
+    created_at: str
+
+
+@router.get(
+    "/inbox",
+    response_model=list[NotificationItemResponse],
+    summary="Get user notification inbox",
+)
+async def get_user_notifications(
+    token: TokenPayload = Depends(get_current_tenant_context),
+) -> list[NotificationItemResponse]:
+    service = InAppNotificationService(tenant_id=token.tenant_id)
+    notifs = service.get_user_inbox(user_email=token.sub)
+    return [
+        NotificationItemResponse(
+            id=n.id,
+            user_email=n.user_email,
+            title=n.title,
+            message=n.message,
+            notification_type=n.notification_type,
+            read=n.read,
+            created_at=n.created_at,
+        )
+        for n in notifs
+    ]

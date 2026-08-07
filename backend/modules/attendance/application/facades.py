@@ -48,13 +48,19 @@ class AttendanceFacade:
             records = []
             for s in signals:
                 sid = s.get("student_id", default_student_id)
-                # If sid is not a valid DB UUID, pick existing student
                 if len(sid) < 10:
                     sid = default_student_id
 
                 sec_id = s.get("class_section_id", default_sec_id)
                 if len(sec_id) < 10:
                     sec_id = default_sec_id
+
+                # Delete any pre-existing record for this student on today's date
+                session.query(AttendanceRecord).filter(
+                    AttendanceRecord.tenant_id == self._tenant_id,
+                    AttendanceRecord.student_id == sid,
+                    AttendanceRecord.attendance_date == date.today(),
+                ).delete(synchronize_session=False)
 
                 rec = AttendanceRecord(
                     id=s.get("signal_id", f"sig_{date.today()}_{sid[:8]}"),
@@ -68,7 +74,7 @@ class AttendanceFacade:
                 )
                 records.append(rec)
 
-            session.bulk_save_objects(records)
+            session.add_all(records)
             session.commit()
             logger.info("Successfully ingested %d mobile attendance signals for tenant %s", len(records), self._tenant_id)
             return len(records)

@@ -34,6 +34,9 @@ from modules.students.api.views import router as students_router
 from modules.attendance.api.views import router as attendance_router
 from modules.fees.api.views import router as fees_router
 from modules.ai_analytics.api.views import router as ai_analytics_router
+from modules.notification_engine.api.views import router as notification_router
+from modules.parent.api.views import router as parent_router
+from modules.student.api.views import router as student_router
 
 logger = logging.getLogger(__name__)
 
@@ -122,3 +125,6 @@ app.include_router(students_router,   prefix=API_V1_PREFIX)
 app.include_router(attendance_router, prefix=API_V1_PREFIX)
 app.include_router(fees_router,       prefix=API_V1_PREFIX)
 app.include_router(ai_analytics_router, prefix=API_V1_PREFIX)
+app.include_router(notification_router, prefix=API_V1_PREFIX)
+app.include_router(parent_router,     prefix=API_V1_PREFIX)
+app.include_router(student_router,    prefix=API_V1_PREFIX)

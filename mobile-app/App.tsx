@@ -6,10 +6,12 @@ import { LoginScreen } from './src/features/auth/LoginScreen';
 import { DailyScheduleScreen } from './src/features/timetable/DailyScheduleScreen';
 import { MarkAttendanceScreen } from './src/features/attendance/MarkAttendanceScreen';
 import { NotificationsScreen } from './src/features/notifications/NotificationsScreen';
+import { ParentHomeScreen } from './src/features/parent/ParentHomeScreen';
+import { StudentHomeScreen } from './src/features/student/StudentHomeScreen';
 import { NavigationBar } from './src/components/NavigationBar';
 
 const MainAppContent: React.FC = () => {
-  const { isAuthenticated } = useMobileAuth();
+  const { user, isAuthenticated } = useMobileAuth();
   const [currentTab, setCurrentTab] = useState<string>('schedule');
   const [selectedSection, setSelectedSection] = useState<string>('10-A');
 
@@ -17,6 +19,33 @@ const MainAppContent: React.FC = () => {
     return <LoginScreen />;
   }
 
+  // Parent Role Routing
+  if (user?.role === 'parent') {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+        <View style={styles.content}>
+          {currentTab === 'notifications' ? <NotificationsScreen /> : <ParentHomeScreen />}
+        </View>
+        <NavigationBar currentTab={currentTab} onSelectTab={setCurrentTab} />
+      </View>
+    );
+  }
+
+  // Student Role Routing
+  if (user?.role === 'student') {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+        <View style={styles.content}>
+          {currentTab === 'notifications' ? <NotificationsScreen /> : <StudentHomeScreen />}
+        </View>
+        <NavigationBar currentTab={currentTab} onSelectTab={setCurrentTab} />
+      </View>
+    );
+  }
+
+  // Default Teacher / Admin Routing
   const handleNavigateToMark = (sec: string) => {
     setSelectedSection(sec);
     setCurrentTab('attendance');

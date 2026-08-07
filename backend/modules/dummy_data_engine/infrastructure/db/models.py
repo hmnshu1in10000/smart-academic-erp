@@ -152,6 +152,25 @@ class AttendanceRecord(Base):
         return f"<AttendanceRecord student={self.student_id} date={self.attendance_date} status={self.status}>"
 
 
+# ── In-App Notifications ───────────────────────────────────────────────────────
+
+class InAppNotification(Base):
+    __tablename__ = "in_app_notifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    user_email: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(32), default="parent")
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    notification_type: Mapped[str] = mapped_column(String(32), default="ALERT")  # ALERT | INFO | URGENT
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    def __repr__(self) -> str:
+        return f"<InAppNotification {self.id}: {self.title}>"
+
+
 # ── Fee Structures ─────────────────────────────────────────────────────────────
 
 class FeeStructure(Base):
