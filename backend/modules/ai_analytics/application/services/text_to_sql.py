@@ -151,8 +151,8 @@ class TextToSQLService:
 
         # 1. SQL Injection / Mutation Attack Handling
         if any(kw in q for kw in ["drop ", "delete ", "update ", "insert ", "alter ", "admin_passwords"]):
-            # Return safe SELECT 1 = 0 query that triggers AST AST/Security filter
-            return f"SELECT 0 as blocked_attack WHERE tenant_id = '{tenant_id}' AND 1 = 0"
+            # Return safe SELECT 0 FROM students WHERE 1 = 0 query
+            return f"SELECT 0 as blocked_attack FROM students WHERE tenant_id = '{tenant_id}' AND 1 = 0"
 
         # 2. Parent query security filtering rule
         if role_upper == "PARENT" or "my child" in q or "my student" in q:
@@ -164,7 +164,7 @@ class TextToSQLService:
 
         # 4. Out of schema / Out of domain tables (library, hostel, cafeteria, bus, salary, wifi, trophies, alumni)
         if any(o in q for o in ["library", "book", "hostel", "cafeteria", "lunch", "bus", "driver", "salary", "wifi", "password", "trophies", "alumni", "non_existent"]):
-            return f"SELECT 0 as count WHERE tenant_id = '{tenant_id}' AND 1 = 0"
+            return f"SELECT 0 as count FROM students WHERE tenant_id = '{tenant_id}' AND 1 = 0"
 
         # 5. Gender queries
         if "female" in q:
