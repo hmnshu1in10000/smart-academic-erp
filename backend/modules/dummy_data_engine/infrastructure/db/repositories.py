@@ -28,9 +28,77 @@ from modules.dummy_data_engine.infrastructure.db.models import (
     FeeInvoice,
     FeeStructure,
     Student,
+    User,
+    TimetableEntry,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class UserRepository:
+    """Persists User/Teacher records to the users table."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def bulk_insert(self, users_data: list[dict]) -> int:
+        """Bulk insert User records avoiding duplicate emails."""
+        inserted = 0
+        for u in users_data:
+            existing = self._session.query(User).filter_by(
+                tenant_id=u["tenant_id"], email=u["email"]
+            ).first()
+            if existing:
+                existing.full_name = u["full_name"]
+                existing.role_key = u.get("role_key", "TEACHER")
+                existing.phone = u.get("phone")
+                existing.assigned_sections = u.get("assigned_sections")
+            else:
+                user_obj = User(
+                    id=u.get("id"),
+                    tenant_id=u["tenant_id"],
+                    email=u["email"],
+                    full_name=u["full_name"],
+                    role_key=u.get("role_key", "TEACHER"),
+                    phone=u.get("phone"),
+                    assigned_sections=u.get("assigned_sections"),
+                    is_active=True,
+                )
+                self._session.add(user_obj)
+                inserted += 1
+        self._session.commit()
+        logger.info("Upserted %d users", len(users_data))
+        return inserted
+
+
+class TimetableRepository:
+    """Persists TimetableEntry objects to the timetable_entries table."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def bulk_insert(self, entries: list[dict]) -> int:
+        """Bulk insert timetable entries."""
+        orm_objects = [
+            TimetableEntry(
+                id=e.get("id"),
+                tenant_id=e["tenant_id"],
+                class_section_id=e["class_section_id"],
+                teacher_id=e.get("teacher_id"),
+                subject_name=e["subject_name"],
+                subject_code=e.get("subject_code"),
+                day_of_week=e["day_of_week"],
+                period_number=e["period_number"],
+                start_time=e["start_time"],
+                end_time=e["end_time"],
+                room_number=e.get("room_number"),
+            )
+            for e in entries
+        ]
+        self._session.bulk_save_objects(orm_objects)
+        logger.info("Inserted %d timetable entries", len(orm_objects))
+        return len(orm_objects)
+
 
 
 class ClassSectionRepository:

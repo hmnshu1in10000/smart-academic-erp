@@ -253,3 +253,35 @@ class User(Base):
     def __repr__(self) -> str:
         return f"<User {self.full_name} ({self.role_key}) - {self.email}>"
 
+
+# ── Timetable Entries ─────────────────────────────────────────────────────────
+
+class TimetableEntry(Base):
+    __tablename__ = "timetable_entries"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    class_section_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("class_sections.id", ondelete="CASCADE"), nullable=False
+    )
+    teacher_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    subject_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    subject_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    day_of_week: Mapped[str] = mapped_column(String(8), nullable=False)  # MON, TUE, WED, THU, FRI, SAT
+    period_number: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 to 8
+    start_time: Mapped[str] = mapped_column(String(8), nullable=False)   # "08:00"
+    end_time: Mapped[str] = mapped_column(String(8), nullable=False)     # "08:45"
+    room_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    __table_args__ = (
+        Index("ix_timetable_section_day", "tenant_id", "class_section_id", "day_of_week"),
+        Index("ix_timetable_teacher", "tenant_id", "teacher_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TimetableEntry {self.subject_name} {self.day_of_week} P{self.period_number}>"
+
+

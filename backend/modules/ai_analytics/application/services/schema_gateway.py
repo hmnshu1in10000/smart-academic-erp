@@ -24,6 +24,8 @@ class ReadOnlySchemaGateway:
         "fee_invoices",
         "class_sections",
         "fee_structures",
+        "users",
+        "timetable_entries",
     )
 
     SCHEMA_PROMPT = """
@@ -37,6 +39,7 @@ ACTIVE CLASSES IN DB: Class 10-A (Grade 10), Class 10-B (Grade 10). (Note: Green
    - grade_level: INTEGER (e.g. 10)
    - section_name: VARCHAR(10) (e.g. 'A', 'B')
    - display_name: VARCHAR(64) (e.g. 'Class 10-A', 'Class 10-B')
+   - class_teacher_id: VARCHAR(36) (FOREIGN KEY -> users.id)
    - room_number: VARCHAR(20)
 
 2. students:
@@ -87,12 +90,37 @@ ACTIVE CLASSES IN DB: Class 10-A (Grade 10), Class 10-B (Grade 10). (Note: Green
    - status: VARCHAR(16) ('PAID', 'PENDING', 'OVERDUE', 'PARTIAL')
    - payment_method: VARCHAR(16) ('UPI', 'CARD', 'CASH', 'BANK_TRANSFER', 'CHEQUE')
 
+6. users (Staff & Faculty):
+   - id: VARCHAR(36) PRIMARY KEY
+   - tenant_id: VARCHAR(64)
+   - email: VARCHAR(255)
+   - full_name: VARCHAR(255)
+   - role_key: VARCHAR(32) ('ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT', 'STUDENT')
+   - phone: VARCHAR(32)
+   - assigned_sections: VARCHAR(255) (e.g. '10-A', '10-B')
+   - is_active: BOOLEAN
+
+7. timetable_entries:
+   - id: VARCHAR(36) PRIMARY KEY
+   - tenant_id: VARCHAR(64)
+   - class_section_id: VARCHAR(36) FOREIGN KEY -> class_sections.id
+   - teacher_id: VARCHAR(36) FOREIGN KEY -> users.id
+   - subject_name: VARCHAR(64) ('Mathematics', 'Science', 'English Language', 'Social Science', 'Hindi', 'Computer Science', 'Physical Education')
+   - subject_code: VARCHAR(16)
+   - day_of_week: VARCHAR(8) ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT')
+   - period_number: INTEGER (1 to 8)
+   - start_time: VARCHAR(8) ('08:00')
+   - end_time: VARCHAR(8) ('08:45')
+   - room_number: VARCHAR(20)
+
 RELATIONSHIPS & JOIN NOTES:
 - students.class_section_id = class_sections.id
 - attendance_records.student_id = students.id
 - attendance_records.class_section_id = class_sections.id
 - fee_invoices.student_id = students.id
 - fee_invoices.fee_structure_id = fee_structures.id
+- To find teachers and their assigned subjects/classes:
+  JOIN `users u` (WHERE LOWER(u.role_key) = 'teacher') with `class_sections cs` (ON cs.class_teacher_id = u.id) or `timetable_entries te` (ON te.teacher_id = u.id).
 - CRITICAL: grade_level exists ONLY in class_sections. To filter students by Grade/Grade level, you MUST JOIN class_sections!
 - CRITICAL COLUMN NOTE: fee_invoices uses amount_due and amount_paid. Column 'amount' exists ONLY on fee_structures (fs.amount), NOT on fee_invoices (f.amount)!
 """

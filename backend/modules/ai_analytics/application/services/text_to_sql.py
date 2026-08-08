@@ -106,6 +106,24 @@ JSON:
   "zero_result_template": "No teachers found registered in the system."
 }}
 
+Q: "List all teachers and their subjects"
+JSON:
+{{
+  "sql": "SELECT DISTINCT u.full_name AS teacher_name, u.email, te.subject_name FROM users u JOIN timetable_entries te ON te.teacher_id = u.id WHERE u.tenant_id = '{tenant_id}' AND LOWER(u.role_key) = 'teacher'",
+  "single_result_template": "Teacher: {{teacher_name}} (Email: {{email}}) teaches {{subject_name}}.",
+  "multi_result_template": "Here are the {{row_count}} teachers and their assigned subjects for Greenwood High:",
+  "zero_result_template": "No teacher subject allotments found."
+}}
+
+Q: "Who is the class teacher of Class 10-A?"
+JSON:
+{{
+  "sql": "SELECT u.full_name AS class_teacher_name, u.phone, cs.display_name FROM class_sections cs JOIN users u ON u.id = cs.class_teacher_id WHERE cs.tenant_id = '{tenant_id}' AND LOWER(cs.display_name) = LOWER('Class 10-A')",
+  "single_result_template": "The class teacher of {{display_name}} is {{class_teacher_name}} (Contact: {{phone}}).",
+  "multi_result_template": "Class teacher record: {{class_teacher_name}} ({{display_name}}).",
+  "zero_result_template": "No class teacher assigned for this section."
+}}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ROLE-BASED ACCESS CONTROL (enforce always)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -445,14 +463,35 @@ class TextToSQLService:
             )
 
         # 2. Out-of-Scope Topics (exams, library books, driver salary, bus route, wifi)
-        OOS = ["bus ", "route", "exam", "marks", "mathematics", "library", "book", "hostel", "cafeteria", "lunch", "driver", "salary", "wifi", "trophies", "alumni"]
+        OOS = ["bus ", "route", "exam", "marks", "library", "book", "hostel", "cafeteria", "lunch", "driver", "salary", "wifi", "trophies", "alumni"]
         if any(o in q for o in OOS):
             return (
                 "SELECT 'No matching records found' AS message;",
                 "", "", "This topic is outside the school academic records database schema."
             )
 
-        # 3. Staff & Teacher Queries
+        # 3. Class Teacher & Subject Allotment Queries
+        if "class teacher" in q:
+            sec_filter = "LOWER(cs.display_name) = 'class 10-a'" if ("10-a" in q or "10 a" in q) else ("LOWER(cs.display_name) = 'class 10-b'" if ("10-b" in q or "10 b" in q) else "1=1")
+            return (
+                f"SELECT u.full_name AS class_teacher_name, u.phone, cs.display_name "
+                f"FROM class_sections cs JOIN users u ON u.id = cs.class_teacher_id "
+                f"WHERE cs.tenant_id = '{tid}' AND {sec_filter}",
+                "The class teacher of {display_name} is {class_teacher_name} (Contact: {phone}).",
+                "Here are the {row_count} class teachers for Greenwood High:",
+                "No class teacher found for this section."
+            )
+
+        if ("teacher" in q or "faculty" in q or "staff" in q) and ("subject" in q or "allotment" in q or "assigned" in q or "timetable" in q or "period" in q or "course" in q):
+            return (
+                f"SELECT DISTINCT u.full_name AS teacher_name, u.email, te.subject_name "
+                f"FROM users u JOIN timetable_entries te ON te.teacher_id = u.id "
+                f"WHERE u.tenant_id = '{tid}' AND LOWER(u.role_key) = 'teacher'",
+                "Teacher: {teacher_name} ({email}) teaches {subject_name}.",
+                "Here are the {row_count} teachers and their assigned subjects for Greenwood High:",
+                "No teacher subject allotments found."
+            )
+
         if "teacher" in q or "faculty" in q or "staff" in q or "principal" in q:
             return (
                 f"SELECT full_name, email, phone, role_key "

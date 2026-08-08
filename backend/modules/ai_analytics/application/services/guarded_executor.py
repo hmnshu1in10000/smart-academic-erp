@@ -63,6 +63,7 @@ class GuardedQueryExecutor:
         "class_sections",
         "fee_structures",
         "users",
+        "timetable_entries",
     }
 
     def __init__(self, max_limit: int = 500) -> None:

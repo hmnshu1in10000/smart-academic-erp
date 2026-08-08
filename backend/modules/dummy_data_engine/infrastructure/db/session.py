@@ -87,6 +87,7 @@ def create_all_tables() -> None:
             if cnt == 0:
                 demo_staff = [
                     User(
+                        id="admin_erp_user",
                         tenant_id="greenwood-high-001",
                         email="admin@demo.school",
                         full_name="ERP Admin",
@@ -94,6 +95,7 @@ def create_all_tables() -> None:
                         phone="+91-98765-43210",
                     ),
                     User(
+                        id="principal_anita_sharma",
                         tenant_id="greenwood-high-001",
                         email="principal@demo.school",
                         full_name="Dr. Anita Sharma",
@@ -101,6 +103,7 @@ def create_all_tables() -> None:
                         phone="+91-98765-43211",
                     ),
                     User(
+                        id="teacher_rajesh_kumar",
                         tenant_id="greenwood-high-001",
                         email="teacher01@demo.school",
                         full_name="Mr. Rajesh Kumar",
@@ -109,12 +112,45 @@ def create_all_tables() -> None:
                         assigned_sections="10-A",
                     ),
                     User(
+                        id="teacher_priya_singh",
                         tenant_id="greenwood-high-001",
                         email="teacher02@demo.school",
                         full_name="Ms. Priya Singh",
                         role_key="TEACHER",
                         phone="+91-98765-43213",
                         assigned_sections="10-B",
+                    ),
+                    User(
+                        id="teacher_amit_verma",
+                        tenant_id="greenwood-high-001",
+                        email="amit.verma@greenwoodhigh.edu.in",
+                        full_name="Mr. Amit Verma",
+                        role_key="TEACHER",
+                        phone="+91-98765-43214",
+                    ),
+                    User(
+                        id="teacher_sunita_sharma",
+                        tenant_id="greenwood-high-001",
+                        email="sunita.sharma@greenwoodhigh.edu.in",
+                        full_name="Ms. Sunita Sharma",
+                        role_key="TEACHER",
+                        phone="+91-98765-43215",
+                    ),
+                    User(
+                        id="teacher_vikram_malhotra",
+                        tenant_id="greenwood-high-001",
+                        email="vikram.malhotra@greenwoodhigh.edu.in",
+                        full_name="Mr. Vikram Malhotra",
+                        role_key="TEACHER",
+                        phone="+91-98765-43216",
+                    ),
+                    User(
+                        id="teacher_kavita_joshi",
+                        tenant_id="greenwood-high-001",
+                        email="kavita.joshi@greenwoodhigh.edu.in",
+                        full_name="Ms. Kavita Joshi",
+                        role_key="TEACHER",
+                        phone="+91-98765-43217",
                     ),
                 ]
                 session.add_all(demo_staff)

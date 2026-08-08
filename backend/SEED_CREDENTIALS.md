@@ -1,6 +1,6 @@
 # SEED CREDENTIALS — DEMO ONLY
 **Tenant:** `greenwood-high-001`
-**Generated:** 2026-08-07
+**Generated:** 2026-08-08
 
 > ⚠️ These are synthetic demo credentials. Never use in production.
 
