@@ -233,3 +233,23 @@ class FeeInvoice(Base):
 
     def __repr__(self) -> str:
         return f"<FeeInvoice student={self.student_id} {self.fee_head_name} status={self.status}>"
+
+
+# ── Users / Staff & Faculty ───────────────────────────────────────────────────
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    role_key: Mapped[str] = mapped_column(String(32), nullable=False, default="TEACHER")  # ADMIN/PRINCIPAL/TEACHER/PARENT/STUDENT
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    assigned_sections: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    def __repr__(self) -> str:
+        return f"<User {self.full_name} ({self.role_key}) - {self.email}>"
+

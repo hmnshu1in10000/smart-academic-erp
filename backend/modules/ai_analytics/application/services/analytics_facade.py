@@ -130,13 +130,13 @@ class ConversationalAnalyticsFacade:
         )
 
         if not template:
-            return self._local_fallback_summary(exec_result)
+            return self._local_fallback_summary(exec_result, gen_sql_dto.raw_query)
 
         try:
             return template.format(**bindings)
         except (KeyError, IndexError) as e:
             logger.warning("Template placeholder mismatch (%s) — using local fallback.", e)
-            return self._local_fallback_summary(exec_result)
+            return self._local_fallback_summary(exec_result, gen_sql_dto.raw_query)
 
     def _resolve_zero_result(
         self,
@@ -161,19 +161,33 @@ class ConversationalAnalyticsFacade:
             )
         return "No matching records found for your query."
 
-    def _local_fallback_summary(self, exec_result: QueryExecutionResultDTO) -> str:
+    def _local_fallback_summary(
+        self,
+        exec_result: QueryExecutionResultDTO,
+        raw_query: str = "",
+    ) -> str:
         """
         Deterministic fallback summary used when LLM template is absent or
         has a placeholder mismatch. Guaranteed safe — uses only local data.
         """
         columns, rows = exec_result.columns, exec_result.rows
+        q = raw_query.lower()
 
-        # Single-column aggregate (count / total)
-        if len(columns) == 1 and any(k in columns[0].lower() for k in ("count", "total")):
-            return f"Found {rows[0][0]} matching records."
+        # Natural domain-aware conversational intro sentences
+        if "teacher" in q or "faculty" in q or "staff" in q or "principal" in q:
+            return f"Here are the {len(rows)} registered teachers for Greenwood High:"
+        if "absent" in q or "attendance" in q:
+            return f"Here are the attendance records ({len(rows)} record{'s' if len(rows) != 1 else ''}):"
+        if "fee" in q or "invoice" in q or "paid" in q or "due" in q:
+            return f"Here is the fee invoice breakdown for Greenwood High ({len(rows)} record{'s' if len(rows) != 1 else ''}):"
+
+        # Single-column aggregate (count / total / rate)
+        if len(columns) == 1 and any(k in columns[0].lower() for k in ("count", "total", "rate", "pct")):
+            val = rows[0][0] if rows and rows[0] else 0
+            return f"Found {val} matching records."
 
         # Single row, multiple columns
         if len(rows) == 1 and len(columns) > 1:
-            return "Result: " + ", ".join(f"{c}: {v}" for c, v in zip(columns, rows[0]))
+            return f"Found 1 matching record for your query."
 
-        return f"Retrieved {len(rows)} record(s)."
+        return f"Here are the {len(rows)} matching records for your query:"

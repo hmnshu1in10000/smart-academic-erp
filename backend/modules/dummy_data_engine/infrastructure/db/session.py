@@ -76,10 +76,53 @@ def get_db_session() -> Generator[Session, None, None]:
 
 def create_all_tables() -> None:
     """Create all ORM-defined tables. Safe to call multiple times (idempotent)."""
-    from modules.dummy_data_engine.infrastructure.db.models import Base
+    from modules.dummy_data_engine.infrastructure.db.models import Base, User
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created (or already exist): %s",
                 list(Base.metadata.tables.keys()))
+
+    with SessionLocal() as session:
+        try:
+            cnt = session.query(User).count()
+            if cnt == 0:
+                demo_staff = [
+                    User(
+                        tenant_id="greenwood-high-001",
+                        email="admin@demo.school",
+                        full_name="ERP Admin",
+                        role_key="ADMIN",
+                        phone="+91-98765-43210",
+                    ),
+                    User(
+                        tenant_id="greenwood-high-001",
+                        email="principal@demo.school",
+                        full_name="Dr. Anita Sharma",
+                        role_key="PRINCIPAL",
+                        phone="+91-98765-43211",
+                    ),
+                    User(
+                        tenant_id="greenwood-high-001",
+                        email="teacher01@demo.school",
+                        full_name="Mr. Rajesh Kumar",
+                        role_key="TEACHER",
+                        phone="+91-98765-43212",
+                        assigned_sections="10-A",
+                    ),
+                    User(
+                        tenant_id="greenwood-high-001",
+                        email="teacher02@demo.school",
+                        full_name="Ms. Priya Singh",
+                        role_key="TEACHER",
+                        phone="+91-98765-43213",
+                        assigned_sections="10-B",
+                    ),
+                ]
+                session.add_all(demo_staff)
+                session.commit()
+                logger.info("Seeded %d staff users", len(demo_staff))
+        except Exception as e:
+            session.rollback()
+            logger.warning("Could not auto-seed users: %s", e)
 
 
 def drop_all_tables() -> None:

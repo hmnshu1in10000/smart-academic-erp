@@ -62,6 +62,7 @@ class GuardedQueryExecutor:
         "fee_invoices",
         "class_sections",
         "fee_structures",
+        "users",
     }
 
     def __init__(self, max_limit: int = 500) -> None:
@@ -182,8 +183,8 @@ class GuardedQueryExecutor:
 
         validated_sql = parsed.sql(dialect="sqlite")
 
-        # 5. Tenant isolation check
-        if "tenant_id" not in validated_sql.lower():
+        # 5. Tenant isolation check (required when real tables are queried)
+        if tables_in_query and "tenant_id" not in validated_sql.lower():
             raise SecurityViolationError("Multi-tenancy Policy Failure: tenant_id filter is missing.")
 
         # 6. Row-level RBAC — structural predicate enforcement (non-admin roles only)

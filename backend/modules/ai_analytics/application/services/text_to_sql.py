@@ -84,8 +84,27 @@ ABSOLUTE SQL RULES
 5.  grade_level exists ONLY on class_sections — JOIN it to filter by grade.
 6.  ALWAYS alias every selected column with `AS <snake_case_alias>`.
 7.  Do NOT end the statement with a semicolon.
-8.  Out-of-schema topics (teachers, exams, library, salary, bus): return
-      SELECT 0 AS out_of_scope WHERE 1=0
+8.  Out-of-schema topics (exams, library books, driver salary, bus route, wifi): return
+      SELECT 'No matching records found' AS message;
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STAFF & TEACHERS SCHEMA MAPPING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+To list teachers or staff, query the `users` table:
+Columns on users: id, tenant_id, email, full_name, role_key ('ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT', 'STUDENT'), phone, assigned_sections, is_active.
+Filter by `LOWER(role_key) = 'teacher'` or `LOWER(role_key) = 'principal'`.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEW-SHOT EXEMPLARS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q: "List all teachers in my school"
+JSON:
+{{
+  "sql": "SELECT full_name, email, phone FROM users WHERE tenant_id = '{tenant_id}' AND LOWER(role_key) = 'teacher'",
+  "single_result_template": "Teacher: {{full_name}} (Email: {{email}}, Phone: {{phone}}).",
+  "multi_result_template": "Here are the {{row_count}} registered teachers for Greenwood High:",
+  "zero_result_template": "No teachers found registered in the system."
+}}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ROLE-BASED ACCESS CONTROL (enforce always)
@@ -268,12 +287,13 @@ class TextToSQLService:
             )
             sql = re.sub(r"(?i)\bWHERE\s+tenant_id\s*=", f"WHERE {primary}.tenant_id =", sql)
 
-        # Fix #5 — inject tenant_id if LLM forgot it
-        if "tenant_id" not in sql.lower():
+        # Fix #5 — inject tenant_id if LLM forgot it (ONLY when a real FROM table exists)
+        if "from " in sql.lower() and "tenant_id" not in sql.lower():
             if "where" in sql.lower():
                 primary = (
                     "students." if "from students" in sql.lower()
                     else "fee_invoices." if "from fee_invoices" in sql.lower()
+                    else "users." if "from users" in sql.lower()
                     else ""
                 )
                 sql = re.sub(r"(?i)\bWHERE\b", f"WHERE {primary}tenant_id = '{tenant_id}' AND ", sql, count=1)
@@ -420,16 +440,26 @@ class TextToSQLService:
         BLOCKED = ["drop ", "delete ", "update ", "insert ", "alter ", "truncate ", "union select", "password", "token", "--", "/*"]
         if any(kw in q for kw in BLOCKED):
             return (
-                f"SELECT 0 AS blocked_attack FROM students WHERE tenant_id = '{tid}' AND 1 = 0",
+                f"SELECT 'Security Policy: DML operations forbidden' AS message",
                 "", "", "Security Policy: DML and injection operations are forbidden."
             )
 
-        # 2. Out-of-Scope Topics
-        OOS = ["teacher", "bus ", "route", "exam", "marks", "mathematics", "library", "book", "hostel", "cafeteria", "lunch", "driver", "salary", "wifi", "trophies", "alumni"]
+        # 2. Out-of-Scope Topics (exams, library books, driver salary, bus route, wifi)
+        OOS = ["bus ", "route", "exam", "marks", "mathematics", "library", "book", "hostel", "cafeteria", "lunch", "driver", "salary", "wifi", "trophies", "alumni"]
         if any(o in q for o in OOS):
             return (
-                "SELECT 0 AS out_of_scope WHERE 1=0",
+                "SELECT 'No matching records found' AS message;",
                 "", "", "This topic is outside the school academic records database schema."
+            )
+
+        # 3. Staff & Teacher Queries
+        if "teacher" in q or "faculty" in q or "staff" in q or "principal" in q:
+            return (
+                f"SELECT full_name, email, phone, role_key "
+                f"FROM users WHERE tenant_id = '{tid}' AND LOWER(role_key) = 'teacher'",
+                "Teacher: {full_name} ({role_key}) - Email: {email}, Phone: {phone}.",
+                "Here are the {row_count} registered teachers for Greenwood High:",
+                "No teachers found registered in the system."
             )
 
         # 3. Parent / Student Role-Based Scoping
