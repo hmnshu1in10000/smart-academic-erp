@@ -1,7 +1,7 @@
 """
 modules/student/api/views.py
 =============================
-GET /api/v1/student/academic-summary — Student Portal Academic Summary Endpoint
+GET /api/v1/student/academic-summary — Student Portal Academic Summary Endpoint (identity-scoped)
 """
 from __future__ import annotations
 
@@ -45,18 +45,26 @@ async def get_student_academic_summary(
     token: TokenPayload = Depends(get_current_tenant_context),
 ) -> StudentAcademicSummaryResponse:
     with SessionLocal() as session:
+        # Resolve caller's own record via verified JWT email (correction.md §1.3)
         student_row = (
             session.query(Student, ClassSection.display_name)
             .join(ClassSection, Student.class_section_id == ClassSection.id)
-            .filter(Student.tenant_id == token.tenant_id)
+            .filter(
+                Student.tenant_id == token.tenant_id,
+                Student.email == token.sub,
+            )
             .first()
         )
         if not student_row:
-            raise HTTPException(status_code=404, detail="No student record associated with account.")
+            raise HTTPException(status_code=404, detail="No student record linked to this account.")
 
         student, section_name = student_row
 
-        students_facade = StudentsFacade(tenant_id=token.tenant_id)
+        students_facade = StudentsFacade(
+            tenant_id=token.tenant_id,
+            role=token.role,
+            requesting_user_id=token.sub,
+        )
         timetable = students_facade.get_student_timetable(student_id=student.id) or []
 
         att_facade = AttendanceFacade(tenant_id=token.tenant_id)

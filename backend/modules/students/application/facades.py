@@ -4,6 +4,11 @@ modules/students/application/facades.py — Module 4.0 Facade
 Reads from the seeded students + class_sections tables.
 Returns plain dict objects (consumed by the API layer as Pydantic models).
 Rule: NO ORM models cross this facade boundary — only dicts/scalars.
+
+Security update (correction.md §1.2):
+- Facade accepts role, requesting_user_id, and assigned_sections.
+- _scope_query applies role-based row scoping before any pagination or fetching.
+- get_student verifies the student is inside the scoped set to prevent ID enumeration.
 """
 from __future__ import annotations
 
@@ -52,23 +57,50 @@ _DEFAULT_TIMETABLE = [
 
 
 class StudentsFacade:
-    """Module 4.0 Application Service — student read operations."""
+    """Module 4.0 Application Service — role-scoped student read operations."""
 
-    def __init__(self, tenant_id: str) -> None:
-        self._tenant_id = tenant_id
+    def __init__(
+        self,
+        tenant_id: str,
+        role: str = "admin",
+        requesting_user_id: str = "",
+        assigned_sections: tuple[str, ...] = (),
+    ) -> None:
+        self.tenant_id = tenant_id
+        self.role = role.lower()
+        self.requesting_user_id = requesting_user_id
+        self.assigned_sections = set(assigned_sections)
+
+    def _scope_query(self, query):
+        """Apply role-based row scoping. Called before any pagination/filtering."""
+        if self.role in ("admin", "principal"):
+            return query
+        if self.role == "teacher":
+            if not self.assigned_sections:
+                return query.filter(False)  # teacher with no assigned section sees nothing
+            return query.filter(
+                ClassSection.display_name.in_(self.assigned_sections)
+            )
+        if self.role == "student":
+            return query.filter(Student.email == self.requesting_user_id)
+        if self.role == "parent":
+            return query.filter(Student.guardian_user_id == self.requesting_user_id)
+        return query.filter(False)  # unknown role — deny by default
 
     def list_students(
         self,
-        section: Optional[str],
-        page: int,
-        page_size: int,
+        section: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50,
     ) -> dict:
         with SessionLocal() as session:
             q = (
                 session.query(Student, ClassSection.display_name)
                 .join(ClassSection, Student.class_section_id == ClassSection.id)
-                .filter(Student.tenant_id == self._tenant_id)
+                .filter(Student.tenant_id == self.tenant_id)
             )
+            q = self._scope_query(q)
+
             if section:
                 q = q.filter(ClassSection.display_name.ilike(f"%{section}%"))
 
@@ -98,12 +130,13 @@ class StudentsFacade:
 
     def get_student(self, student_id: str) -> Optional[dict]:
         with SessionLocal() as session:
-            row = (
+            q = (
                 session.query(Student, ClassSection.display_name)
                 .join(ClassSection, Student.class_section_id == ClassSection.id)
-                .filter(Student.id == student_id, Student.tenant_id == self._tenant_id)
-                .first()
+                .filter(Student.id == student_id, Student.tenant_id == self.tenant_id)
             )
+            q = self._scope_query(q)
+            row = q.first()
             if not row:
                 return None
             s, display_name = row
@@ -127,16 +160,16 @@ class StudentsFacade:
     def get_student_timetable(self, student_id: str) -> Optional[list[dict]]:
         """Returns timetable for the student's section. Uses static timetable for Phase 1."""
         with SessionLocal() as session:
-            row = (
+            q = (
                 session.query(Student, ClassSection.display_name)
                 .join(ClassSection, Student.class_section_id == ClassSection.id)
-                .filter(Student.id == student_id, Student.tenant_id == self._tenant_id)
-                .first()
+                .filter(Student.id == student_id, Student.tenant_id == self.tenant_id)
             )
+            q = self._scope_query(q)
+            row = q.first()
             if not row:
                 return None
             _student, display_name = row
-            # Customize room label per section
             section_suffix = display_name.replace("Class ", "").replace("-", "")
             return [
                 {**entry, "room": f"R{section_suffix}"}

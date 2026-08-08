@@ -11,3 +11,7 @@ venv/
 __pycache__/
 *.pyc
 node_modules/
+
+# SQLite lock & wal files
+*.sqlite3-shm
+*.sqlite3-wal

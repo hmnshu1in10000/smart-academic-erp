@@ -3,6 +3,10 @@ modules/attendance/application/facades.py — Module 5.0 Facade
 ==============================================================
 Reads from the seeded attendance_records + students + class_sections tables.
 Returns plain dicts for the API layer.
+
+Security update (correction.md §1.2):
+- get_summary enforces role scoping: teacher only sees assigned_sections,
+  student/parent access personal history via identity endpoints.
 """
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ from modules.dummy_data_engine.infrastructure.db.session import SessionLocal
 from modules.dummy_data_engine.infrastructure.db.models import (
     AttendanceRecord, Student, ClassSection,
 )
+from modules.ai_analytics.application.services.guarded_executor import SecurityViolationError
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +39,6 @@ class AttendanceFacade:
             return 0
 
         with SessionLocal() as session:
-            # Check or resolve valid class_section_id and student_id
             first_section = session.query(ClassSection).filter(
                 ClassSection.tenant_id == self._tenant_id
             ).first()
@@ -55,7 +59,6 @@ class AttendanceFacade:
                 if len(sec_id) < 10:
                     sec_id = default_sec_id
 
-                # Delete any pre-existing record for this student on today's date
                 session.query(AttendanceRecord).filter(
                     AttendanceRecord.tenant_id == self._tenant_id,
                     AttendanceRecord.student_id == sid,
@@ -79,13 +82,42 @@ class AttendanceFacade:
             logger.info("Successfully ingested %d mobile attendance signals for tenant %s", len(records), self._tenant_id)
             return len(records)
 
+    def _empty_summary(self, from_date: Optional[str] = None, to_date: Optional[str] = None) -> dict:
+        end = date.fromisoformat(to_date) if to_date else date.today()
+        start = date.fromisoformat(from_date) if from_date else end - timedelta(days=29)
+        return {
+            "tenant_id": self._tenant_id,
+            "section": None,
+            "from_date": str(start),
+            "to_date": str(end),
+            "daily_stats": [],
+            "overall_present_pct": 0.0,
+            "chronic_absentees": [],
+        }
+
     def get_summary(
         self,
         section: Optional[str],
         from_date: Optional[str],
         to_date: Optional[str],
+        role: str = "admin",
+        assigned_sections: tuple[str, ...] = (),
     ) -> dict:
-        """Aggregate daily attendance stats for a date range."""
+        """Aggregate daily attendance stats for a date range with role-based scoping."""
+        role_lower = role.lower()
+
+        if role_lower == "teacher":
+            allowed = set(assigned_sections)
+            if section and section not in allowed:
+                raise SecurityViolationError(f"Teacher not assigned to section '{section}'.")
+            if not section:
+                section = next(iter(allowed), None)
+            if not allowed:
+                return self._empty_summary(from_date, to_date)
+
+        if role_lower in ("student", "parent"):
+            raise SecurityViolationError("Use /attendance/student/{id} or the personal summary endpoint for this role.")
+
         with SessionLocal() as session:
             end = date.fromisoformat(to_date) if to_date else date.today()
             start = date.fromisoformat(from_date) if from_date else end - timedelta(days=29)
@@ -116,7 +148,6 @@ class AttendanceFacade:
 
             rows = q.all()
 
-            # Pivot into per-day stats
             daily: dict[tuple[str, str], dict] = {}
             for att_date, sec_name, status, cnt in rows:
                 key = (str(att_date), sec_name)
@@ -146,7 +177,6 @@ class AttendanceFacade:
 
             overall_pct = round(total_p / total_all * 100, 1) if total_all else 0.0
 
-            # Chronic absentees
             chronic_q = (
                 session.query(
                     Student.id,

@@ -33,6 +33,7 @@ export const LoginPage: React.FC = () => {
         role: data.role,
         full_name: data.full_name,
         tenant_id: data.tenant_id,
+        assigned_sections: data.assigned_sections || [],
       });
     } catch (err: any) {
       console.error('Login error:', err);

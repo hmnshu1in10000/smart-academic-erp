@@ -3,6 +3,9 @@ modules/fees/application/facades.py — Module 6.0 Facade
 =========================================================
 Reads from seeded fee_invoices + fee_structures + students + class_sections.
 Returns plain dicts for the API layer.
+
+Security update (correction.md §1.2):
+- list_invoices and get_collection_summary role-scoped.
 """
 from __future__ import annotations
 
@@ -17,6 +20,7 @@ from modules.dummy_data_engine.infrastructure.db.session import SessionLocal
 from modules.dummy_data_engine.infrastructure.db.models import (
     FeeInvoice, FeeStructure, Student, ClassSection,
 )
+from modules.ai_analytics.application.services.guarded_executor import SecurityViolationError
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +33,7 @@ def _invoice_to_dict(inv: FeeInvoice, student_name: str, section_name: str) -> d
         "student_name": student_name,
         "section": section_name,
         "fee_head": inv.fee_head_name,
-        "term_label": "",   # Fetched separately if needed
+        "term_label": "",
         "amount_due": float(inv.amount_due),
         "amount_paid": float(inv.amount_paid),
         "outstanding": round(amt_outstanding, 2),
@@ -56,7 +60,6 @@ class FeesFacade:
             ).first()
 
             if not inv:
-                # If ID not matched directly, pick first overdue/pending invoice for demo
                 inv = session.query(FeeInvoice).filter(
                     FeeInvoice.tenant_id == self._tenant_id,
                     FeeInvoice.status.in_(["OVERDUE", "PENDING", "PARTIAL"])
@@ -97,7 +100,13 @@ class FeesFacade:
         term: Optional[str],
         page: int,
         page_size: int,
+        role: str = "admin",
+        assigned_sections: tuple[str, ...] = (),
     ) -> dict:
+        role_lower = role.lower()
+        if role_lower in ("student", "parent"):
+            raise SecurityViolationError("Use /fees/me or /fees/my-child for personal ledgers.")
+
         with SessionLocal() as session:
             q = (
                 session.query(
@@ -111,6 +120,11 @@ class FeesFacade:
                 .join(FeeStructure, FeeInvoice.fee_structure_id == FeeStructure.id)
                 .filter(FeeInvoice.tenant_id == self._tenant_id)
             )
+            if role_lower == "teacher":
+                if not assigned_sections:
+                    return {"items": [], "total": 0, "page": page, "page_size": page_size, "has_next": False}
+                q = q.filter(ClassSection.display_name.in_(assigned_sections))
+
             if section:
                 q = q.filter(ClassSection.display_name.ilike(f"%{section}%"))
             if status:
@@ -152,7 +166,6 @@ class FeesFacade:
             collected = float(row.collected or 0)
             outstanding = billed - collected
 
-            # Status breakdown
             status_rows = (
                 session.query(FeeInvoice.status, func.count(FeeInvoice.id))
                 .filter(FeeInvoice.tenant_id == self._tenant_id)

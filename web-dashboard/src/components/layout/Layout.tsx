@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 
 interface LayoutProps {
+  defaultTab?: string;
   children: (activeTab: string, setActiveTab: (tab: string) => void) => React.ReactNode;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+export const Layout: React.FC<LayoutProps> = ({ defaultTab = 'dashboard', children }) => {
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100">

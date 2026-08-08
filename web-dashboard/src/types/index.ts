@@ -1,5 +1,7 @@
 // Shared Type Definitions for Smart Academic ERP Dashboard
 
+export type AppRole = 'admin' | 'principal' | 'teacher' | 'student' | 'parent';
+
 export interface ThemeTokens {
   primary: string;
   secondary: string;
@@ -37,9 +39,10 @@ export interface TenantConfig {
 
 export interface User {
   sub: string;
-  role: string;
+  role: AppRole;
   full_name: string;
   tenant_id: string;
+  assigned_sections?: string[];  // present only for role === 'teacher'
 }
 
 export interface AuthState {
@@ -129,13 +132,54 @@ export interface FeeSummary {
   partial_count: number;
 }
 
+// ── AI Analytics types (correction.md §4.4) ─────────────────────────────────
+
+export interface ChatTurnPayload {
+  role: 'user' | 'assistant';
+  content: string;
+  sql?: string;
+}
+
+export interface AskQueryRequest {
+  query: string;
+  chat_history: ChatTurnPayload[];
+  debug_mode: boolean;
+}
+
+export interface RawDataTable {
+  columns: string[];
+  rows: any[][];
+}
+
 export interface AIQueryResponse {
   question: string;
-  generated_sql: string;
-  explanation: string;
+  summary_answer: string;
   columns: string[];
   rows: any[][];
   row_count: number;
-  summary_answer: string;
   error?: string;
+  // Present only when debug_mode is active AND server ENVIRONMENT == "development":
+  generated_sql?: string;
+  explanation?: string;
+  raw_data_table?: RawDataTable;
+  execution_time_ms?: number;
+}
+
+// ── Academic summary types (new — correction.md §4.4) ────────────────────────
+
+export interface AcademicSubjectGrade {
+  subject_name: string;
+  teacher_name: string;
+  grade: string;
+  score_pct: number;
+}
+
+export interface PersonalAcademicSummary {
+  student_id: string;
+  student_name: string;
+  section: string;
+  roll_number: number;
+  attendance_rate_pct: number;
+  report_card: AcademicSubjectGrade[];
+  timetable_count: number;
 }

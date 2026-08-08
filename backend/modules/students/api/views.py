@@ -1,11 +1,11 @@
 """
 modules/students/api/views.py — Module 4.0
 ===========================================
-GET /api/v1/students                    — paginated student roster
-GET /api/v1/students/{student_id}       — single student detail
-GET /api/v1/students/{student_id}/timetable — student timetable (not in DB, generated)
+GET /api/v1/students                    — paginated student roster (role-scoped)
+GET /api/v1/students/{student_id}       — single student detail (role-scoped)
+GET /api/v1/students/{student_id}/timetable — student timetable (role-scoped)
 
-All reads go through the StudentsFacade, which queries the dummy_data_engine DB tables.
+All reads go through StudentsFacade, which applies tenant + role-based row scoping.
 """
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ class PaginatedStudents(BaseModel):
     "",
     response_model=PaginatedStudents,
     summary="List students",
-    description="Returns paginated student roster for the authenticated tenant.",
+    description="Returns paginated student roster for the authenticated tenant, scoped by role.",
 )
 async def list_students(
     section: Optional[str] = Query(None, description="Filter by section e.g. '10-A'"),
@@ -77,7 +77,12 @@ async def list_students(
     page_size: int = Query(25, ge=1, le=100),
     token: TokenPayload = Depends(get_current_tenant_context),
 ) -> PaginatedStudents:
-    facade = StudentsFacade(tenant_id=token.tenant_id)
+    facade = StudentsFacade(
+        tenant_id=token.tenant_id,
+        role=token.role,
+        requesting_user_id=token.sub,
+        assigned_sections=token.assigned_sections,
+    )
     result = facade.list_students(section=section, page=page, page_size=page_size)
     return PaginatedStudents(**result)
 
@@ -91,7 +96,12 @@ async def get_student(
     student_id: str,
     token: TokenPayload = Depends(get_current_tenant_context),
 ) -> StudentDetail:
-    facade = StudentsFacade(tenant_id=token.tenant_id)
+    facade = StudentsFacade(
+        tenant_id=token.tenant_id,
+        role=token.role,
+        requesting_user_id=token.sub,
+        assigned_sections=token.assigned_sections,
+    )
     student = facade.get_student(student_id)
     if not student:
         raise HTTPException(status_code=404, detail=f"Student '{student_id}' not found")
@@ -108,7 +118,12 @@ async def get_student_timetable(
     student_id: str,
     token: TokenPayload = Depends(get_current_tenant_context),
 ) -> list[TimetableEntry]:
-    facade = StudentsFacade(tenant_id=token.tenant_id)
+    facade = StudentsFacade(
+        tenant_id=token.tenant_id,
+        role=token.role,
+        requesting_user_id=token.sub,
+        assigned_sections=token.assigned_sections,
+    )
     entries = facade.get_student_timetable(student_id)
     if entries is None:
         raise HTTPException(status_code=404, detail=f"Student '{student_id}' not found")

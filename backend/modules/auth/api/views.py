@@ -35,30 +35,42 @@ _DEMO_USERS: dict[str, dict] = {
         "role": "admin",
         "full_name": "ERP Admin",
         "tenant_id": "greenwood-high-001",
+        "assigned_sections": [],
     },
     "principal@demo.school": {
         "password": "Demo@1234!",
-        "role": "admin",
+        "role": "principal",
         "full_name": "Dr. Anita Sharma",
         "tenant_id": "greenwood-high-001",
+        "assigned_sections": [],
     },
     "teacher01@demo.school": {
         "password": "Demo@1234!",
         "role": "teacher",
         "full_name": "Mr. Rajesh Kumar",
         "tenant_id": "greenwood-high-001",
+        "assigned_sections": ["10-A"],
     },
     "teacher02@demo.school": {
         "password": "Demo@1234!",
         "role": "teacher",
         "full_name": "Ms. Priya Singh",
         "tenant_id": "greenwood-high-001",
+        "assigned_sections": ["10-B"],
     },
     "parent-of-student-01@demo.school": {
         "password": "Demo@1234!",
         "role": "parent",
         "full_name": "Parent User",
         "tenant_id": "greenwood-high-001",
+        "assigned_sections": [],
+    },
+    "student01@demo.school": {
+        "password": "Demo@1234!",
+        "role": "student",
+        "full_name": "Demo Student",
+        "tenant_id": "greenwood-high-001",
+        "assigned_sections": [],
     },
 }
 
@@ -71,12 +83,14 @@ class TokenResponse(BaseModel):
     role: str
     full_name: str
     tenant_id: str
+    assigned_sections: list[str] = []
 
 
 class MeResponse(BaseModel):
     sub: str
     tenant_id: str
     role: str
+    assigned_sections: list[str] = []
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -104,18 +118,21 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    assigned_sections = user.get("assigned_sections", [])
     token = create_access_token(
         subject=username,
         tenant_id=user["tenant_id"],
         role=user["role"],
         expires_delta=timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
+        assigned_sections=assigned_sections,
     )
-    logger.info("Successful login: %s (role=%s)", username, user["role"])
+    logger.info("Successful login: %s (role=%s, sections=%s)", username, user["role"], assigned_sections)
     return TokenResponse(
         access_token=token,
         role=user["role"],
         full_name=user["full_name"],
         tenant_id=user["tenant_id"],
+        assigned_sections=assigned_sections,
     )
 
 
@@ -131,4 +148,5 @@ async def me(
         sub=token_payload.sub,
         tenant_id=token_payload.tenant_id,
         role=token_payload.role,
+        assigned_sections=list(token_payload.assigned_sections),
     )

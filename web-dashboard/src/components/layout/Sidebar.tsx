@@ -1,15 +1,12 @@
 import React from 'react';
 import { 
-  LayoutDashboard, 
-  Users, 
-  CalendarCheck, 
-  CreditCard, 
-  Sparkles, 
   GraduationCap,
   ChevronRight,
   ShieldAlert
 } from 'lucide-react';
 import { useTenant } from '../../config/ThemeProvider';
+import { useAuth } from '../../context/AuthContext';
+import { ROLE_NAV_CONFIG, normalizeRole } from '../../config/roleNavigation';
 
 interface SidebarProps {
   activeTab: string;
@@ -18,20 +15,9 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   const { config } = useTenant();
-
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
-    { id: 'students', label: 'Students & Roster', icon: Users },
-    { id: 'attendance', label: 'Attendance Insights', icon: CalendarCheck },
-    { id: 'fees', label: 'Fee Management', icon: CreditCard },
-    { 
-      id: 'ai-analytics', 
-      label: 'AI Chat Query Engine', 
-      icon: Sparkles, 
-      isAI: true,
-      badge: 'PRO' 
-    },
-  ];
+  const { user } = useAuth();
+  const role = normalizeRole(user?.role);
+  const navItems = ROLE_NAV_CONFIG[role] || ROLE_NAV_CONFIG.student;
 
   return (
     <aside className="w-64 glass-panel flex flex-col border-r border-slate-800 h-screen sticky top-0 select-none z-30">
@@ -56,17 +42,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       <div className="px-4 py-3 mx-4 my-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs text-slate-400">
         <span className="flex items-center space-x-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Tenant: <strong className="text-slate-200">greenwood-high-001</strong></span>
+          <span>Tenant: <strong className="text-slate-200">{config?.tenant_id || user?.tenant_id || 'greenwood-high-001'}</strong></span>
         </span>
         <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded uppercase font-semibold">
-          {config?.board || 'CBSE'}
+          {user?.role ? user.role.toUpperCase() : config?.board || 'CBSE'}
         </span>
       </div>
 
       {/* Navigation Links */}
       <nav className="flex-1 px-3 py-2 space-y-1.5 overflow-y-auto">
         <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-          Main Menu
+          {role.toUpperCase()} MENU
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -87,9 +73,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                   <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-amber-400 group-hover:scale-110'} transition-transform duration-200`} />
                   <span>{item.label}</span>
                 </div>
-                <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
-                  {item.badge}
-                </span>
+                {item.badge && (
+                  <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           }
@@ -124,8 +112,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           <span className="text-emerald-400 font-semibold">ACTIVE</span>
         </div>
         <div className="flex items-center justify-between text-[11px]">
-          <span>Biometric CV Hook</span>
-          <span className="text-slate-400 font-mono">PHASE-2</span>
+          <span>Role Guardrails</span>
+          <span className="text-emerald-400 font-mono">ENFORCED</span>
         </div>
       </div>
     </aside>

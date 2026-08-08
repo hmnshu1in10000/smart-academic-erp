@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from jose import JWTError, jwt
@@ -31,10 +31,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 @dataclass(frozen=True)
 class TokenPayload:
-    sub: str           # user email / identifier
+    sub: str            # user email / identifier
     tenant_id: str
-    role: str          # "admin" | "teacher" | "parent" | "student"
+    role: str           # "admin" | "principal" | "teacher" | "parent" | "student"
     exp: datetime
+    assigned_sections: tuple[str, ...] = field(default_factory=tuple)
+    # ^^ Only meaningful for role == "teacher". Empty tuple for all other roles.
+    # Phase 2: populate from teacher_section_assignments DB table at login time.
 
 
 def create_access_token(
@@ -42,6 +45,7 @@ def create_access_token(
     tenant_id: str,
     role: str,
     expires_delta: timedelta | None = None,
+    assigned_sections: list[str] | None = None,
 ) -> str:
     """Sign a JWT access token."""
     expire = datetime.now(timezone.utc) + (
@@ -53,6 +57,7 @@ def create_access_token(
         "role": role,
         "exp": expire,
         "iat": datetime.now(timezone.utc),
+        "assigned_sections": assigned_sections or [],
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
 
@@ -70,10 +75,17 @@ def decode_access_token(token: str) -> TokenPayload:
         tenant_id: str = payload.get("tenant_id", "")
         role: str = payload.get("role", "guest")
         exp_ts = payload.get("exp", 0)
+        assigned_sections: tuple[str, ...] = tuple(payload.get("assigned_sections", []))
         if not sub or not tenant_id:
             raise credentials_exception
         exp_dt = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
-        return TokenPayload(sub=sub, tenant_id=tenant_id, role=role, exp=exp_dt)
+        return TokenPayload(
+            sub=sub,
+            tenant_id=tenant_id,
+            role=role,
+            exp=exp_dt,
+            assigned_sections=assigned_sections,
+        )
     except JWTError:
         raise credentials_exception
 
