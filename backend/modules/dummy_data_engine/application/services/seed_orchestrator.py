@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from modules.dummy_data_engine.application.services.academic_structure_generator import (
@@ -47,6 +47,7 @@ from modules.dummy_data_engine.infrastructure.db.repositories import (
     StudentRepository,
     UserRepository,
     TimetableRepository,
+    NotificationRepository,
 )
 from modules.dummy_data_engine.infrastructure.db.session import (
     create_all_tables,
@@ -415,6 +416,205 @@ class DemoTenantSeedOrchestrator:
                 )
 
         logger.info("  [OK] %d fee invoices created", fee_invoices_created)
+
+        # ── Phase 5: Seed role-scoped and user-scoped notifications ──────────
+        logger.info("Phase 5/5: Generating role-scoped notifications...")
+
+        notifications_data = [
+            # ── TEACHER Notifications (target_role = 'TEACHER') ──
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "TEACHER",
+                "title": "Term 1 Exam Invigilation Duty in Room R10A",
+                "message": "Please report to Room 101 for Grade 10 Mathematics invigilation at 08:30 AM on Monday.",
+                "category": "URGENT",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(minutes=15),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "TEACHER",
+                "title": "Staff Meeting Notice",
+                "message": "All faculty members are requested to attend the monthly academic performance review meeting in Conference Hall at 3:30 PM.",
+                "category": "INFO",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(hours=2),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "TEACHER",
+                "title": "Class 10-A Attendance Summary",
+                "message": "Daily roll call recorded: 24 Present, 1 Absent for Section A.",
+                "category": "ALERT",
+                "is_read": True,
+                "created_at": datetime.now(timezone.utc) - timedelta(hours=6),
+            },
+
+            # ── PARENT Notifications (target_role = 'PARENT') ──
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "PARENT",
+                "title": "ABSENCE ALERT: Your child was marked Absent on 2026-08-07",
+                "message": "Your student was recorded absent during morning roll call. Please contact the class teacher if this was unexpected.",
+                "category": "URGENT",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(minutes=25),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "PARENT",
+                "title": "FEE REMINDER: Term 1 Tuition Fee Invoice is Overdue",
+                "message": "Term 1 Tuition fee invoice #INV-2024-001 of ₹2,200 is overdue by 7 days. Please pay via the mobile app or online portal.",
+                "category": "ALERT",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(hours=3),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "PARENT",
+                "title": "PTM Notice: Parent-Teacher Meeting Scheduled",
+                "message": "Parent-Teacher Meeting for Class 10 is scheduled for this Saturday from 09:00 AM to 12:30 PM.",
+                "category": "INFO",
+                "is_read": True,
+                "created_at": datetime.now(timezone.utc) - timedelta(days=1),
+            },
+
+            # ── STUDENT Notifications (target_role = 'STUDENT') ──
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "STUDENT",
+                "title": "ACADEMIC NOTICE: Term 1 Report Card Grades Published",
+                "message": "Term 1 academic progress report cards have been released. View your subject grades in the student portal.",
+                "category": "INFO",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(hours=1),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "STUDENT",
+                "title": "LIBRARY ALERT: Computer Science Reference Book Due Tomorrow",
+                "message": "The book 'Introduction to Algorithms' is due for return to the Central Library by 4:00 PM tomorrow.",
+                "category": "ALERT",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(hours=4),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "STUDENT",
+                "title": "SPORTS NOTICE: Independence Day Practice at 8:00 AM",
+                "message": "All students participating in march past and athletics must assemble at the football ground tomorrow morning.",
+                "category": "INFO",
+                "is_read": True,
+                "created_at": datetime.now(timezone.utc) - timedelta(days=2),
+            },
+
+            # ── ADMIN & PRINCIPAL Notifications ──
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "ADMIN",
+                "title": "DAILY ROLL CALL: 95% Class Attendance Submitted",
+                "message": "Morning attendance locked across all sections with 95.2% student attendance rate.",
+                "category": "INFO",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(minutes=45),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "ADMIN",
+                "title": "FINANCE ALERT: Term 1 Fee Collection Reached 92%",
+                "message": "Term 1 fee collections reached ₹3,42,000 against billed target of ₹3,70,000.",
+                "category": "ALERT",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(hours=5),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "PRINCIPAL",
+                "title": "ACADEMIC AUDIT: Grade 10 Performance Review",
+                "message": "Term 1 syllabus completion status submitted by Department Heads for Principal sign-off.",
+                "category": "INFO",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(hours=2),
+            },
+
+            # ── ALL Broadcast Notifications (target_role = 'ALL') ──
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": None,
+                "target_role": "ALL",
+                "title": "HOLIDAY NOTICE: School Closed for Independence Day",
+                "message": "Greenwood High will remain closed on Friday for national holiday celebrations.",
+                "category": "INFO",
+                "is_read": True,
+                "created_at": datetime.now(timezone.utc) - timedelta(days=3),
+            },
+
+            # ── PERSONAL Notifications (Targeted recipient_user_id) ──
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": "parent-of-student-01@demo.school",
+                "target_role": "PARENT",
+                "title": "Special Academic Consultation",
+                "message": "Follow up with Class Teacher Mr. Rajesh Kumar regarding Mathematics Term 1 performance.",
+                "category": "ALERT",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(minutes=10),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": "teacher01@demo.school",
+                "target_role": "TEACHER",
+                "title": "Schedule Change: Period 3 Room Update",
+                "message": "Period 3 Mathematics on Wednesday has been shifted to Room 103 for smart-board demonstration.",
+                "category": "INFO",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(minutes=20),
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": request.tenant_id,
+                "recipient_user_id": "teacher_rajesh_kumar",
+                "target_role": "TEACHER",
+                "title": "Timetable Adjustment Notification",
+                "message": "Your substitute period for Grade 10-B Science is confirmed for Friday Period 4.",
+                "category": "INFO",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc) - timedelta(minutes=30),
+            },
+        ]
+
+        with get_db_session() as session:
+            notif_repo = NotificationRepository(session)
+            notif_repo.bulk_insert(notifications_data)
+
+        logger.info("  [OK] %d role-scoped notifications created", len(notifications_data))
 
         # ── Finalize ───────────────────────────────────────────────────────────
         duration = time.monotonic() - start_time

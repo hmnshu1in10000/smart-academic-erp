@@ -30,9 +30,42 @@ from modules.dummy_data_engine.infrastructure.db.models import (
     Student,
     User,
     TimetableEntry,
+    InAppNotification,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class NotificationRepository:
+    """Persists InAppNotification records to the in_app_notifications table."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def bulk_insert(self, notifs: list[dict]) -> int:
+        """Bulk insert notification rows."""
+        orm_objects = [
+            InAppNotification(
+                id=n.get("id"),
+                tenant_id=n["tenant_id"],
+                recipient_user_id=n.get("recipient_user_id"),
+                user_email=n.get("recipient_user_id"),
+                target_role=n.get("target_role", "ALL"),
+                role=n.get("target_role", "ALL"),
+                title=n["title"],
+                message=n["message"],
+                category=n.get("category", "INFO"),
+                notification_type=n.get("category", "INFO"),
+                is_read=n.get("is_read", False),
+                read=n.get("is_read", False),
+                created_at=n.get("created_at", datetime.now(timezone.utc)),
+            )
+            for n in notifs
+        ]
+        self._session.bulk_save_objects(orm_objects)
+        logger.info("Inserted %d in-app notifications", len(orm_objects))
+        return len(orm_objects)
+
 
 
 class UserRepository:

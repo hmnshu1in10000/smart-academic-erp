@@ -160,16 +160,21 @@ class InAppNotification(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    user_email: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    role: Mapped[str] = mapped_column(String(32), default="parent")
+    recipient_user_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    user_email: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    target_role: Mapped[str] = mapped_column(String(32), default="ALL", index=True)  # ADMIN | TEACHER | PARENT | STUDENT | PRINCIPAL | ALL
+    role: Mapped[str | None] = mapped_column(String(32), default="ALL")
     title: Mapped[str] = mapped_column(String(256), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
-    notification_type: Mapped[str] = mapped_column(String(32), default="ALERT")  # ALERT | INFO | URGENT
+    category: Mapped[str] = mapped_column(String(32), default="INFO")  # URGENT | ALERT | INFO
+    notification_type: Mapped[str] = mapped_column(String(32), default="INFO")
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     def __repr__(self) -> str:
-        return f"<InAppNotification {self.id}: {self.title}>"
+        return f"<InAppNotification {self.id}: {self.title} (target={self.target_role}, user={self.recipient_user_id})>"
+
 
 
 # ── Fee Structures ─────────────────────────────────────────────────────────────

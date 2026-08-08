@@ -69,78 +69,44 @@ class InAppNotificationService:
                 created_at=str(notif.created_at),
             )
 
-    def get_user_inbox(self, user_email: str) -> list[NotificationResponseDTO]:
-        """Retrieves user inbox notifications from DB."""
+    def get_user_inbox(self, user_id_or_email: str, role_key: str = "ALL") -> list[NotificationResponseDTO]:
+        """Retrieves strictly role-scoped and user-scoped inbox notifications from DB."""
+        role_upper = (role_key or "ALL").upper()
+        uid_lower = (user_id_or_email or "").lower()
+
         with SessionLocal() as session:
-            rows = (
+            all_rows = (
                 session.query(InAppNotification)
-                .filter(
-                    InAppNotification.tenant_id == self._tenant_id,
-                    InAppNotification.user_email == user_email,
-                )
+                .filter(InAppNotification.tenant_id == self._tenant_id)
                 .order_by(InAppNotification.created_at.desc())
                 .all()
             )
 
-            if not rows:
-                now = datetime.now(timezone.utc)
-                return [
-                    NotificationResponseDTO(
-                        id="notif_01",
-                        user_email=user_email,
-                        title="Daily Roll Call Completed",
-                        message="Attendance recorded for Grade 10-A (48 Present, 2 Absent).",
-                        notification_type="ATTENDANCE",
-                        read=False,
-                        created_at=str(now - timedelta(minutes=12)),
-                    ),
-                    NotificationResponseDTO(
-                        id="notif_02",
-                        user_email=user_email,
-                        title="Chronic Absentee Alert: Roll 14",
-                        message="Student has exceeded 5 recorded absences this academic term.",
-                        notification_type="ATTENDANCE",
-                        read=False,
-                        created_at=str(now - timedelta(hours=2)),
-                    ),
-                    NotificationResponseDTO(
-                        id="notif_03",
-                        user_email=user_email,
-                        title="Fee Invoice Overdue: Class 10-A",
-                        message="Term 1 Tuition fee invoice of ₹2,200 is overdue by 7 days.",
-                        notification_type="FEES",
-                        read=False,
-                        created_at=str(now - timedelta(hours=5)),
-                    ),
-                    NotificationResponseDTO(
-                        id="notif_04",
-                        user_email=user_email,
-                        title="CBSE Academic Timetable Live",
-                        message="Weekly class schedule has been synchronized for all Grade 10 sections.",
-                        notification_type="ACADEMIC",
-                        read=True,
-                        created_at=str(now - timedelta(days=1)),
-                    ),
-                    NotificationResponseDTO(
-                        id="notif_05",
-                        user_email=user_email,
-                        title="Security Guardrails Active",
-                        message="AST SQL execution engine verified with 100% tenant & RBAC isolation.",
-                        notification_type="SYSTEM",
-                        read=True,
-                        created_at=str(now - timedelta(days=2)),
-                    ),
-                ]
+            filtered = []
+            for r in all_rows:
+                target = (r.target_role or r.role or "ALL").upper()
+                recip = (r.recipient_user_id or r.user_email or "").lower()
+
+                # 1. Targeted personal notification for this specific user ID or email
+                if recip and recip == uid_lower:
+                    filtered.append(r)
+                # 2. Targeted role broadcast (e.g. TEACHER, PARENT, STUDENT, ADMIN, PRINCIPAL)
+                elif target != "ALL" and target == role_upper:
+                    filtered.append(r)
+                # 3. Universal school-wide broadcast (ALL)
+                elif target == "ALL" and not recip:
+                    filtered.append(r)
 
             return [
                 NotificationResponseDTO(
                     id=r.id,
-                    user_email=r.user_email,
+                    user_email=r.recipient_user_id or r.user_email or user_id_or_email,
                     title=r.title,
                     message=r.message,
-                    notification_type=r.notification_type,
-                    read=r.read,
+                    notification_type=r.category or r.notification_type or "INFO",
+                    read=r.is_read or r.read,
                     created_at=str(r.created_at),
                 )
-                for r in rows
+                for r in filtered
             ]
+

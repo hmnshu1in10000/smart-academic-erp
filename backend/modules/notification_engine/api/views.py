@@ -37,13 +37,14 @@ class MarkReadResponse(BaseModel):
 @router.get(
     "/inbox",
     response_model=list[NotificationItemResponse],
-    summary="Get user notification inbox",
+    summary="Get role-scoped and user-scoped notification inbox",
 )
 async def get_user_notifications(
     token: TokenPayload = Depends(get_current_tenant_context),
 ) -> list[NotificationItemResponse]:
     service = InAppNotificationService(tenant_id=token.tenant_id)
-    notifs = service.get_user_inbox(user_email=token.sub)
+    role_key = token.role_key or "ALL"
+    notifs = service.get_user_inbox(user_id_or_email=token.sub, role_key=role_key)
     return [
         NotificationItemResponse(
             id=n.id,
