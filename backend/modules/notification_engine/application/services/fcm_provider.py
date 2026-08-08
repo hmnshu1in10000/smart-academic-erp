@@ -7,7 +7,7 @@ Integrates FcmPushProvider (FCM payload dispatch simulation) + InAppNotification
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from modules.dummy_data_engine.infrastructure.db.session import SessionLocal
@@ -25,7 +25,7 @@ class FcmPushProvider:
 
     def send_push_notification(self, device_token: str, title: str, body: str, data_payload: Optional[dict] = None) -> bool:
         """Simulates FCM Cloud Messaging API call."""
-        logger.info(f"[FCM PUSH SENT] DeviceToken: '{device_token[:15]}...' | Title: '{title}' | Body: '{body}'")
+        logger.info("[FCM PUSH SENT] DeviceToken: '%s...' | Title: '%s' | Body: '%s'", device_token[:15], title, body)
         return True
 
 
@@ -82,18 +82,54 @@ class InAppNotificationService:
                 .all()
             )
 
-            # If user has no notifications yet, return seed notices
             if not rows:
+                now = datetime.now(timezone.utc)
                 return [
                     NotificationResponseDTO(
-                        id="notif_demo_01",
+                        id="notif_01",
                         user_email=user_email,
-                        title="Welcome to Parent & Student Portal",
-                        message="Track daily attendance, fee dues, and timetable in real-time.",
-                        notification_type="INFO",
+                        title="Daily Roll Call Completed",
+                        message="Attendance recorded for Grade 10-A (48 Present, 2 Absent).",
+                        notification_type="ATTENDANCE",
                         read=False,
-                        created_at=str(datetime.now(timezone.utc)),
-                    )
+                        created_at=str(now - timedelta(minutes=12)),
+                    ),
+                    NotificationResponseDTO(
+                        id="notif_02",
+                        user_email=user_email,
+                        title="Chronic Absentee Alert: Roll 14",
+                        message="Student has exceeded 5 recorded absences this academic term.",
+                        notification_type="ATTENDANCE",
+                        read=False,
+                        created_at=str(now - timedelta(hours=2)),
+                    ),
+                    NotificationResponseDTO(
+                        id="notif_03",
+                        user_email=user_email,
+                        title="Fee Invoice Overdue: Class 10-A",
+                        message="Term 1 Tuition fee invoice of ₹2,200 is overdue by 7 days.",
+                        notification_type="FEES",
+                        read=False,
+                        created_at=str(now - timedelta(hours=5)),
+                    ),
+                    NotificationResponseDTO(
+                        id="notif_04",
+                        user_email=user_email,
+                        title="CBSE Academic Timetable Live",
+                        message="Weekly class schedule has been synchronized for all Grade 10 sections.",
+                        notification_type="ACADEMIC",
+                        read=True,
+                        created_at=str(now - timedelta(days=1)),
+                    ),
+                    NotificationResponseDTO(
+                        id="notif_05",
+                        user_email=user_email,
+                        title="Security Guardrails Active",
+                        message="AST SQL execution engine verified with 100% tenant & RBAC isolation.",
+                        notification_type="SYSTEM",
+                        read=True,
+                        created_at=str(now - timedelta(days=2)),
+                    ),
                 ]
 
             return [

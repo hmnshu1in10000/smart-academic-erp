@@ -183,3 +183,17 @@ export interface PersonalAcademicSummary {
   report_card: AcademicSubjectGrade[];
   timetable_count: number;
 }
+
+// ── Notification types ───────────────────────────────────────────────────────
+
+export interface NotificationItem {
+  id: string;
+  user_email: string;
+  title: string;
+  message: string;
+  category: string;
+  notification_type: string;
+  is_read: boolean;
+  read: boolean;
+  created_at: string;
+}
