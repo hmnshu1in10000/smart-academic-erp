@@ -59,13 +59,16 @@ def set_cell_bg(cell, hex_color: str):
     tcPr.append(shd)
 
 
-def set_cell_padding(cell, top=60, bottom=60, left=80, right=80):
-    """Set cell padding (in twentieths of a point = twips, 1pt=20twips)."""
+def set_cell_padding(cell, top=3, bottom=3, left=5, right=5):
+    """Set cell padding. Values in points; converted to twips (1pt = 20 twips)."""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
+    # Remove any existing tcMar to avoid duplicates
+    for existing in tcPr.findall(qn('w:tcMar')):
+        tcPr.remove(existing)
     mar = OxmlElement('w:tcMar')
-    for side, val in [('top', top*20), ('bottom', bottom*20),
-                      ('left', left*20), ('right', right*20)]:
+    for side, val in [('top', int(top * 20)), ('bottom', int(bottom * 20)),
+                      ('left', int(left * 20)), ('right', int(right * 20))]:
         s = OxmlElement(f'w:{side}')
         s.set(qn('w:w'), str(val))
         s.set(qn('w:type'), 'dxa')
@@ -177,25 +180,86 @@ def add_bullet(doc, text: str, level=0):
 
 
 def make_navy_table(doc, headers: list, rows: list, col_widths=None):
-    """Build a formatted table with navy header row."""
+    """Build a formatted table with navy header row, fixed column widths."""
+    # Available text width: A4 (8.27") - left margin (1.25") - right margin (1.0") = 6.02"
+    TEXT_WIDTH_INCHES = 6.02
+
+    # Auto-distribute columns equally if no widths given
+    if not col_widths:
+        col_widths = [round(TEXT_WIDTH_INCHES / len(headers), 3)] * len(headers)
+
+    # Scale col_widths proportionally so they sum to exactly TEXT_WIDTH_INCHES
+    total = sum(col_widths)
+    if total > 0:
+        scale = TEXT_WIDTH_INCHES / total
+        col_widths = [round(w * scale, 4) for w in col_widths]
+
+    # Convert to EMUs (English Metric Units): 1 inch = 914400 EMUs
+    col_widths_emu = [int(w * 914400) for w in col_widths]
+
     table = doc.add_table(rows=1 + len(rows), cols=len(headers))
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.style = 'Table Grid'
+
+    # Force fixed table layout (prevents Word from auto-resizing columns)
+    tbl = table._tbl
+    tblPr = tbl.find(qn('w:tblPr'))
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        tbl.insert(0, tblPr)
+    # Remove existing tblLayout if any
+    for existing in tblPr.findall(qn('w:tblLayout')):
+        tblPr.remove(existing)
+    tblLayout = OxmlElement('w:tblLayout')
+    tblLayout.set(qn('w:type'), 'fixed')
+    tblPr.append(tblLayout)
+    # Set total table width
+    for existing in tblPr.findall(qn('w:tblW')):
+        tblPr.remove(existing)
+    tblW = OxmlElement('w:tblW')
+    tblW.set(qn('w:w'), str(int(TEXT_WIDTH_INCHES * 1440)))  # twips
+    tblW.set(qn('w:type'), 'dxa')
+    tblPr.append(tblW)
+
+    # Set tblGrid (column definitions)
+    for existing in tbl.findall(qn('w:tblGrid')):
+        tbl.remove(existing)
+    tblGrid = OxmlElement('w:tblGrid')
+    for w_emu in col_widths_emu:
+        gridCol = OxmlElement('w:gridCol')
+        gridCol.set(qn('w:w'), str(int(w_emu / 635)))  # EMU → twips (1 twip = 635 EMU)
+        tblGrid.append(gridCol)
+    # Insert tblGrid after tblPr
+    tblPr_idx = list(tbl).index(tblPr)
+    tbl.insert(tblPr_idx + 1, tblGrid)
+
+    def _set_cell_width(cell, w_emu):
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        for existing in tcPr.findall(qn('w:tcW')):
+            tcPr.remove(existing)
+        tcW = OxmlElement('w:tcW')
+        tcW.set(qn('w:w'), str(int(w_emu / 635)))  # EMU → twips
+        tcW.set(qn('w:type'), 'dxa')
+        tcPr.insert(0, tcW)
 
     # Header row
     hdr_row = table.rows[0]
     for i, h in enumerate(headers):
         cell = hdr_row.cells[i]
+        _set_cell_width(cell, col_widths_emu[i])
         set_cell_bg(cell, '1B365D')
-        set_cell_padding(cell)
+        set_cell_padding(cell, top=3, bottom=3, left=5, right=5)
         cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
         for para in cell.paragraphs:
             para.clear()
         para = cell.paragraphs[0]
         para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        para.paragraph_format.space_after = Pt(0)
+        para.paragraph_format.space_before = Pt(0)
         run = para.add_run(h)
         run.font.name = FONT
-        run.font.size = Pt(10)
+        run.font.size = Pt(9)
         run.font.bold = True
         run.font.color.rgb = WHITE
 
@@ -205,22 +269,18 @@ def make_navy_table(doc, headers: list, rows: list, col_widths=None):
         bg = 'F5F5F5' if ri % 2 == 1 else 'FFFFFF'
         for ci, val in enumerate(row_data):
             cell = row.cells[ci]
+            _set_cell_width(cell, col_widths_emu[ci] if ci < len(col_widths_emu) else col_widths_emu[-1])
             set_cell_bg(cell, bg)
-            set_cell_padding(cell)
+            set_cell_padding(cell, top=2, bottom=2, left=5, right=5)
             cell.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             para = cell.paragraphs[0]
             para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            para.paragraph_format.space_after = Pt(0)
+            para.paragraph_format.space_before = Pt(0)
             run = para.add_run(str(val))
             run.font.name = FONT
-            run.font.size = Pt(10)
+            run.font.size = Pt(9)
             run.font.color.rgb = BLACK
-
-    # Set column widths if provided
-    if col_widths:
-        for row in table.rows:
-            for i, cell in enumerate(row.cells):
-                if i < len(col_widths):
-                    cell.width = Inches(col_widths[i])
 
     doc.add_paragraph()  # spacing after table
     return table
@@ -1298,16 +1358,17 @@ def build_data_dict(doc):
     add_heading1(doc, "CHAPTER 10: DATA TABLES — COMPLETE DATA DICTIONARY")
     add_body_para(doc, "This chapter presents the complete relational data dictionary for all nine tables in the HAAZIR database schema. Each table definition includes field name, data type, nullability, key and constraint information, and a functional description of the field's purpose within the system.")
 
-    def dd_table(title, headers, fields, samples):
+    def dd_table(title, headers, fields, samples, sample_col_widths=None):
         add_heading2(doc, title)
         make_navy_table(doc, headers=headers, rows=fields,
-                        col_widths=[1.4, 1.1, 0.7, 1.2, 2.3])
+                        col_widths=[1.3, 1.0, 0.6, 1.1, 2.0])
         add_heading3(doc, "Sample Data Records:")
         make_navy_table(doc,
                         headers=[f[0] for f in fields],
                         rows=samples,
-                        col_widths=[1.4, 1.1, 0.7, 1.2, 2.3])
+                        col_widths=sample_col_widths)  # None = auto-distribute equally
         doc.add_paragraph()
+
 
     # ------ users ------
     dd_table(
