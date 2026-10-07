@@ -61,6 +61,30 @@ def add_figure_image(doc, img_filename: str, caption_text: str, width_inches=5.8
         return para
     return None
 
+
+def add_landscape_figure_image(doc, img_filename: str, caption_text: str, height_inches=6.8):
+    """Inserts a landscape-rotated figure scaled by height so it fits vertically on a portrait page."""
+    img_path = os.path.join(IMG_DIR, img_filename)
+    if os.path.exists(img_path):
+        para = doc.add_paragraph()
+        para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        para.paragraph_format.space_before = Pt(8)
+        para.paragraph_format.space_after = Pt(4)
+        run = para.add_run()
+        run.add_picture(img_path, height=Inches(height_inches))
+        
+        cap_para = doc.add_paragraph()
+        cap_para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cap_para.paragraph_format.space_after = Pt(12)
+        cap_run = cap_para.add_run(caption_text)
+        cap_run.font.name = FONT
+        cap_run.font.size = Pt(10)
+        cap_run.font.italic = True
+        cap_run.font.bold = True
+        cap_run.font.color.rgb = NAVY
+        return para
+    return None
+
 def set_cell_border(cell, **kwargs):
     """Set borders on a table cell."""
     tc = cell._tc
@@ -862,7 +886,7 @@ def build_methodology(doc):
     ]
     for p in paras:
         add_body_para(doc, p)
-    add_figure_image(doc, "methodology_framework.png", "Figure 5.1: HAAZIR Dual Methodology Framework (Agile Scrum & CRISP-DM)", 5.8)
+    add_landscape_figure_image(doc, "methodology_framework_landscape_90.png", "Figure 5.1: HAAZIR Dual Methodology Framework (Agile Scrum & CRISP-DM)", height_inches=6.8)
 
     add_heading2(doc, "5.2  Work Breakdown Structure (WBS)")
     add_body_para(doc, "The complete project Work Breakdown Structure, organized across the six development phases, is presented below:")
@@ -924,7 +948,7 @@ def build_methodology(doc):
         for task in tasks:
             add_bullet(doc, task, level=0)
 
-    add_figure_image(doc, "gantt_chart.png", "Figure 5.2: Work Breakdown Structure & Project Implementation Schedule (Gantt Chart)", 5.8)
+    add_landscape_figure_image(doc, "gantt_chart_landscape_270.png", "Figure 5.2: Work Breakdown Structure & Project Implementation Schedule (Gantt Chart)", height_inches=6.8)
 
 
 # ---------------------------------------------------------------------------
@@ -1109,7 +1133,7 @@ def build_system_design(doc):
     add_heading1(doc, "CHAPTER 9: SYSTEM DESIGN & FLOW DIAGRAMS")
     add_heading2(doc, "9.1  Computer Vision & YOLO Inference Pipeline Flowchart")
     add_body_para(doc, "The following flowchart illustrates the end-to-end processing sequence of the HAAZIR YOLO Vision Engine from smartphone camera capture, homography perspective deskewing, YOLOv8 column detection, MobileNet character classification, to Human-in-the-Loop (HITL) verification and database commit:")
-    add_figure_image(doc, "cv_pipeline_flowchart.png", "Figure 9.1: HAAZIR Computer Vision & YOLO Inference Pipeline Flowchart", 5.8)
+    add_landscape_figure_image(doc, "cv_pipeline_flowchart_landscape_90.png", "Figure 9.1: HAAZIR Computer Vision & YOLO Inference Pipeline Flowchart", height_inches=6.8)
 
     add_heading2(doc, "9.2  Context-Level (0-Level) Data Flow Diagram")
     add_body_para(doc, "The 0-Level DFD presents the HAAZIR system as a single process node (the 'HAAZIR Academic ERP System') and illustrates all external entities (Teacher, Admin, Principal, Parent, Student, LLM API, Razorpay, FCM) and the primary data flows between them:")

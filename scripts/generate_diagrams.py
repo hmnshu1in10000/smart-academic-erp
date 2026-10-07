@@ -3,13 +3,17 @@ scripts/generate_diagrams.py
 Generates high-resolution PNG diagram images for HAAZIR synopsis docx:
 - Mermaid flowcharts, DFDs, ER diagrams, Gantt chart via Playwright + local Mermaid JS
 - Matplotlib performance benchmarks and training metrics graphs
+- Rotated landscape versions for oversized flowcharts & Gantt chart
 """
 
 import os
 import asyncio
 from playwright.async_api import async_playwright
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import datetime, timedelta
 import numpy as np
+from PIL import Image
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -18,7 +22,7 @@ os.makedirs(IMG_DIR, exist_ok=True)
 
 MERMAID_JS = os.path.join(PROJECT_ROOT, "node_modules", "mermaid", "dist", "mermaid.min.js")
 
-async def render_mermaid(mermaid_code: str, output_path: str, width: int = 1200):
+async def render_mermaid(mermaid_code: str, output_path: str, scale: float = 2.0):
     with open(MERMAID_JS, "r", encoding="utf-8") as f:
         mermaid_js_content = f.read()
 
@@ -30,13 +34,15 @@ async def render_mermaid(mermaid_code: str, output_path: str, width: int = 1200)
   body {{
     background-color: #ffffff;
     margin: 0;
-    padding: 20px;
+    padding: 15px;
     font-family: 'Segoe UI', Arial, sans-serif;
   }}
   #container {{
     display: inline-block;
     background-color: #ffffff;
+    border: 1px solid #E2E8F0;
     border-radius: 8px;
+    padding: 15px;
   }}
   .mermaid {{
     background-color: #ffffff;
@@ -58,26 +64,20 @@ async def render_mermaid(mermaid_code: str, output_path: str, width: int = 1200)
     theme: 'default',
     themeVariables: {{
       fontFamily: 'Segoe UI, Arial, sans-serif',
-      fontSize: '15px',
+      fontSize: '14px',
       primaryColor: '#1B365D',
       primaryTextColor: '#ffffff',
       primaryBorderColor: '#0F2342',
       lineColor: '#1B365D',
       secondaryColor: '#EBF3FA',
-      tertiaryColor: '#F5F5F5',
-      noteBkgColor: '#FFF9E6',
-      noteTextColor: '#333333'
+      tertiaryColor: '#F8FAFC',
+      clusterBkg: '#F1F5F9',
+      clusterBorder: '#CBD5E1'
     }},
     flowchart: {{
       htmlLabels: true,
-      curve: 'basis'
-    }},
-    gantt: {{
-      titleTopMargin: 25,
-      barHeight: 20,
-      barGap: 4,
-      topPadding: 50,
-      sidePadding: 50
+      curve: 'basis',
+      padding: 12
     }}
   }});
 </script>
@@ -87,7 +87,7 @@ async def render_mermaid(mermaid_code: str, output_path: str, width: int = 1200)
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page(device_scale_factor=2)
+        page = await browser.new_page(device_scale_factor=scale)
         await page.set_content(html_content, wait_until="networkidle")
         await page.wait_for_selector(".mermaid svg", timeout=8000)
         
@@ -97,6 +97,7 @@ async def render_mermaid(mermaid_code: str, output_path: str, width: int = 1200)
             print(f"[MERMAID OK] {os.path.basename(output_path)} ({os.path.getsize(output_path)} bytes)")
         await browser.close()
 
+
 def generate_matplotlib_charts():
     # -----------------------------------------------------------------------
     # Figure 1: YOLOv8 Training & Validation Metrics (mAP@0.5 vs Epochs)
@@ -104,7 +105,6 @@ def generate_matplotlib_charts():
     fig, ax1 = plt.subplots(figsize=(8, 4.5), dpi=300)
     epochs = np.arange(1, 51)
     
-    # Simulated realistic smooth learning curves for register detection
     train_loss = 2.5 * np.exp(-epochs/10) + 0.15 + np.random.normal(0, 0.02, 50)
     val_loss = 2.7 * np.exp(-epochs/12) + 0.22 + np.random.normal(0, 0.03, 50)
     map_50 = 100 * (1 - 0.95 * np.exp(-epochs/8)) + np.random.normal(0, 0.5, 50)
@@ -165,11 +165,80 @@ def generate_matplotlib_charts():
     plt.close()
     print(f"[MATPLOTLIB OK] {os.path.basename(chart2_path)}")
 
+    # -----------------------------------------------------------------------
+    # Figure 3: Matplotlib Implementation Schedule (Gantt Chart)
+    # -----------------------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(10, 5.2), dpi=300)
+    tasks = [
+        ("Phase 1: Requirements & Clean Arch", "2026-06-01", "2026-06-15", "#1B365D"),
+        ("Phase 1: 3NF Relational DB Schema", "2026-06-10", "2026-06-25", "#2B4C7E"),
+        ("Phase 2: JWT Auth & Multi-Tenant Engine", "2026-06-22", "2026-07-08", "#3B629B"),
+        ("Phase 2: Module 3.0 Synthetic Engine", "2026-07-01", "2026-07-15", "#4B78B7"),
+        ("Phase 3: YOLO Dataset & Annotations", "2026-07-10", "2026-07-28", "#E67E22"),
+        ("Phase 3: YOLOv8 Fine-Tuning", "2026-07-22", "2026-08-08", "#D35400"),
+        ("Phase 3: OpenCV Deskew Pipeline", "2026-08-01", "2026-08-16", "#C0392B"),
+        ("Phase 4: Text-to-SQL Analytics Engine", "2026-08-10", "2026-08-25", "#8E44AD"),
+        ("Phase 4: Fee Engine & Razorpay Webhook", "2026-08-18", "2026-09-02", "#16A085"),
+        ("Phase 5: React 19 Web Admin Dashboard", "2026-08-25", "2026-09-12", "#27AE60"),
+        ("Phase 5: React Native Expo Mobile App", "2026-09-01", "2026-09-18", "#2980B9"),
+        ("Phase 6: Integration Testing & Synopsis", "2026-09-12", "2026-09-30", "#2C3E50"),
+    ]
+
+    y_pos = np.arange(len(tasks))
+    start_dates = [datetime.strptime(t[1], "%Y-%m-%d") for t in tasks]
+    end_dates = [datetime.strptime(t[2], "%Y-%m-%d") for t in tasks]
+    durations = [(e - s).days for s, e in zip(start_dates, end_dates)]
+    colors = [t[3] for t in tasks]
+    labels = [t[0] for t in tasks]
+
+    bars = ax.barh(y_pos, durations, left=start_dates, height=0.55, align='center', color=colors, edgecolor='#ffffff', linewidth=1.2)
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=9.5, fontweight='bold', color='#1E293B')
+    ax.invert_yaxis()
+
+    ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=2))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+    plt.xticks(fontsize=9, fontweight='bold', color='#334155')
+
+    ax.grid(True, axis='x', linestyle='--', alpha=0.5, color='#CBD5E1')
+    ax.set_axisbelow(True)
+
+    ax.set_title("HAAZIR Project Implementation Schedule (16-Week Gantt Timeline)", fontsize=11.5, fontweight='bold', pad=14, color='#1B365D')
+    
+    for bar, dur in zip(bars, durations):
+        width = bar.get_width()
+        x_loc = bar.get_x() + width / 2
+        y_loc = bar.get_y() + bar.get_height() / 2
+        ax.text(x_loc, y_loc, f"{dur}d", ha='center', va='center', color='white', fontweight='bold', fontsize=8)
+
+    for spine in ['top', 'right', 'left']:
+        ax.spines[spine].set_visible(False)
+    ax.spines['bottom'].set_color('#94A3B8')
+
+    fig.tight_layout()
+    gantt_path = os.path.join(IMG_DIR, "gantt_chart.png")
+    plt.savefig(gantt_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"[MATPLOTLIB GANTT OK] {os.path.basename(gantt_path)}")
+
+
+def rotate_and_save(img_filename: str, angle: int):
+    """Rotates an image using PIL expand=True and saves as {basename}_landscape_{angle}.png."""
+    path = os.path.join(IMG_DIR, img_filename)
+    if os.path.exists(path):
+        im = Image.open(path)
+        rotated = im.rotate(angle, expand=True)
+        base, ext = os.path.splitext(img_filename)
+        out_name = f"{base}_landscape_{angle}{ext}"
+        out_path = os.path.join(IMG_DIR, out_name)
+        rotated.save(out_path)
+        print(f"[ROTATE OK] {img_filename} rotated {angle}° -> {out_name}")
+
 def main():
     generate_matplotlib_charts()
 
     mermaid_diagrams = {
-        # 1. Master System Architecture
         "system_architecture.png": """
         flowchart TB
             subgraph CLIENT["Client Layer (Web & Mobile)"]
@@ -200,49 +269,35 @@ def main():
             LOGIC --> DATA
         """,
 
-        # 2. YOLO Vision Pipeline Flowchart
         "cv_pipeline_flowchart.png": """
-        flowchart TD
-            A(["Teacher Opens Mobile App"]) --> B["Capture Attendance Register Photo"]
-            B --> C["Multipart Upload POST /api/v1/vision/scan"]
-            
-            subgraph S1["Stage 1: OpenCV Preprocessing"]
-                C --> D1["GaussianBlur 5x5, σ=1.0"]
-                D1 --> D2["Grayscale Conversion"]
-                D2 --> D3["Otsu Adaptive Thresholding"]
+        flowchart LR
+            subgraph S1["1. Acquisition & Preprocessing"]
+                direction TB
+                A["📷 Mobile App Capture"] --> B["Multipart POST /api/v1/vision/scan"]
+                B --> C["OpenCV GaussianBlur & Otsu Binarization"]
             end
-            
-            subgraph S2["Stage 2: Perspective Deskewing"]
-                D3 --> E1["findContours RETR_EXTERNAL"]
-                E1 --> E2["approxPolyDP ε=0.02*Perimeter"]
-                E2 --> E3["4-Point Corner Extraction"]
-                E3 --> E4["getPerspectiveTransform Homography H"]
-                E4 --> E5["warpPerspective Deskewed Image"]
+
+            subgraph S2["2. Perspective Deskew"]
+                direction TB
+                D1["cv2.findContours & approxPolyDP"] --> D2["4-Point Homography H"]
+                D2 --> D3["cv2.warpPerspective Deskewed Image"]
             end
-            
-            subgraph S3["Stage 3: YOLO Column Detection"]
-                E5 --> F1["Resize to 640x640"]
-                F1 --> F2["YOLOv8 Forward Pass"]
-                F2 --> F3["NMS Suppression conf > 0.6"]
-                F3 --> F4["Detect RollCol, NameCol, MarkCol"]
+
+            subgraph S3["3. YOLO Column & Grid"]
+                direction TB
+                E1["YOLOv8 Detection Head (NMS > 0.6)"] --> E2["Roll, Name & Mark Column Bounding Boxes"]
+                E2 --> E3["Vertical Strip Cell Grid Slicing"]
             end
-            
-            subgraph S4["Stage 4 & 5: Cell Slicing & Classification"]
-                F4 --> G1["Vertical Strip Cell Slicing"]
-                G1 --> G2["MobileNetV3 Classifier P/A/L/Blank"]
+
+            subgraph S4["4. MobileNet & Ingestion"]
+                direction TB
+                F1["MobileNetV3 Classifier (P/A/L/Blank)"] --> F2["HITL Verification Dialog (Conf ≥85%)"]
+                F2 --> F3["Bulk DB Commit & FCM Parent Alerts"]
             end
-            
-            subgraph S6["Stage 6: HITL Verification & Ingestion"]
-                G2 --> H1["HITL Verification Dialog"]
-                H1 --> H2{"Teacher Confirms?"}
-                H2 -- Yes --> H3["POST /api/v1/attendance/batch"]
-                H2 -- Edit --> H1
-                H3 --> I[("Commit to Database")]
-                I --> J["Dispatch FCM Absent Alerts to Parents"]
-            end
+
+            S1 --> S2 --> S3 --> S4
         """,
 
-        # 3. Context 0-Level DFD
         "dfd0_context.png": """
         flowchart LR
             TEACHER["TEACHER"]
@@ -272,7 +327,6 @@ def main():
             SYS -->|Push Notification Delivery| FCM
         """,
 
-        # 4. 1-Level Decomposed DFD
         "dfd1_decomposed.png": """
         flowchart TD
             subgraph ENTITIES["External Entities"]
@@ -315,7 +369,6 @@ def main():
             P6 -->|Query Database| D2 & D4 & D1
         """,
 
-        # 5. Entity-Relationship ER Diagram
         "er_diagram.png": """
         erDiagram
             USERS ||--o{ CLASS_SECTIONS : "class_teacher_of"
@@ -389,62 +442,38 @@ def main():
             }
         """,
 
-        # 6. Dual Methodology Framework
         "methodology_framework.png": """
-        flowchart TD
-            subgraph AGILE["Software Engineering Track: Agile Scrum Framework"]
-                S1["Sprint Planning<br/>(Scope Definition)"] --> S2["Sprint Backlog & Daily Standup"]
-                S2 --> S3["Iterative Feature Development<br/>(Backend API, Web, Mobile)"]
-                S3 --> S4["Sprint Review & Demo"]
-                S4 --> S5["Sprint Retrospective"]
+        flowchart LR
+            subgraph AGILE["Software Track: Agile Scrum Framework"]
+                direction TB
+                S1["1. Sprint Planning"] --> S2["2. Daily Standup"]
+                S2 --> S3["3. Feature Dev (API/Web/Mobile)"]
+                S3 --> S4["4. Sprint Review & Demo"]
+                S4 --> S5["5. Retrospective"]
                 S5 --> S1
             end
 
             subgraph CRISP["AI & CV Track: CRISP-DM Process"]
-                C1["1. Business Understanding<br/>(Target mAP > 95%)"] --> C2["2. Data Understanding<br/>(Synthetic Register Dataset)"]
-                C2 --> C3["3. Data Preparation<br/>(YOLO Annotations & Splitting)"]
-                C3 --> C4["4. Modeling<br/>(YOLOv8 Fine-Tuning)"]
-                C4 --> C5["5. Evaluation<br/>(Validation Partition Testing)"]
-                C5 --> C6["6. Deployment<br/>(ONNX Export & FastAPI Route)"]
+                direction TB
+                C1["1. Business Understanding"] --> C2["2. Data Prep & Annotation"]
+                C2 --> C3["3. YOLOv8 Model Training"]
+                C4["5. ONNX Model Export"] <-- C3
+                C3 --> C5["4. Validation Evaluation"]
             end
 
-            AGILE <-->|API & Model Integration| CRISP
-        """,
-
-        # 7. Project Timeline Gantt Chart
-        "gantt_chart.png": """
-        gantt
-            title HAAZIR Project Implementation Schedule (16 Weeks)
-            dateFormat YYYY-MM-DD
-            axisFormat %b %d
-
-            section Phase 1: Architecture
-            Requirements & Clean Arch Design :active, p1, 2026-06-01, 14d
-            Schema Design & ORM Setup        :p2, 2026-06-15, 14d
-
-            section Phase 2: Core Auth & API
-            JWT Auth & Multi-Tenant Engine   :p3, 2026-06-29, 14d
-            Module 3.0 Synthetic Engine      :p4, 2026-07-06, 14d
-
-            section Phase 3: YOLO Vision
-            Dataset Generation & Annotation  :p5, 2026-07-13, 14d
-            YOLOv8 Model Fine-Tuning         :p6, 2026-07-27, 14d
-            OpenCV Deskew & Slicing Pipeline :p7, 2026-08-03, 14d
-
-            section Phase 4: AI Analytics & Fee
-            Text-to-SQL Service & AST Rules  :p8, 2026-08-10, 14d
-            Razorpay Sandbox & FCM Engine    :p9, 2026-08-17, 14d
-
-            section Phase 5: Frontends & QA
-            React 19 Web Admin Dashboard    :p10, 2026-08-24, 14d
-            React Native Expo Mobile App    :p11, 2026-08-31, 14d
-            Integration Testing & Synopsis  :p12, 2026-09-14, 14d
+            AGILE <===>|"API & Model Contract Integration"| CRISP
         """
     }
 
     for fname, code in mermaid_diagrams.items():
         out_path = os.path.join(IMG_DIR, fname)
         asyncio.run(render_mermaid(code, out_path))
+
+    # Generate rotated landscape versions (90° and 270°) for the 3 target diagrams
+    target_diagrams = ["cv_pipeline_flowchart.png", "methodology_framework.png", "gantt_chart.png"]
+    for diag in target_diagrams:
+        rotate_and_save(diag, 90)
+        rotate_and_save(diag, 270)
 
 if __name__ == "__main__":
     main()
