@@ -1,9 +1,9 @@
 """
 scripts/generate_diagrams.py
 Generates high-resolution PNG diagram images for HAAZIR synopsis docx:
-- Mermaid flowcharts, DFDs, ER diagrams, Gantt chart via Playwright + local Mermaid JS
-- Matplotlib performance benchmarks and training metrics graphs
-- Rotated landscape versions for oversized flowcharts & Gantt chart
+- Compact, non-bleeding upright portrait Mermaid flowcharts & Matplotlib graphs
+- Strictly zero rotation (0° upright orientation)
+- Height-restrained to fit cleanly within portrait page margins
 """
 
 import os
@@ -11,9 +11,8 @@ import asyncio
 from playwright.async_api import async_playwright
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import datetime, timedelta
+from datetime import datetime
 import numpy as np
-from PIL import Image
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -34,15 +33,15 @@ async def render_mermaid(mermaid_code: str, output_path: str, scale: float = 2.0
   body {{
     background-color: #ffffff;
     margin: 0;
-    padding: 15px;
+    padding: 12px;
     font-family: 'Segoe UI', Arial, sans-serif;
   }}
   #container {{
     display: inline-block;
     background-color: #ffffff;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #CBD5E1;
     border-radius: 8px;
-    padding: 15px;
+    padding: 12px;
   }}
   .mermaid {{
     background-color: #ffffff;
@@ -64,7 +63,7 @@ async def render_mermaid(mermaid_code: str, output_path: str, scale: float = 2.0
     theme: 'default',
     themeVariables: {{
       fontFamily: 'Segoe UI, Arial, sans-serif',
-      fontSize: '14px',
+      fontSize: '13px',
       primaryColor: '#1B365D',
       primaryTextColor: '#ffffff',
       primaryBorderColor: '#0F2342',
@@ -77,7 +76,7 @@ async def render_mermaid(mermaid_code: str, output_path: str, scale: float = 2.0
     flowchart: {{
       htmlLabels: true,
       curve: 'basis',
-      padding: 12
+      padding: 10
     }}
   }});
 </script>
@@ -102,7 +101,7 @@ def generate_matplotlib_charts():
     # -----------------------------------------------------------------------
     # Figure 1: YOLOv8 Training & Validation Metrics (mAP@0.5 vs Epochs)
     # -----------------------------------------------------------------------
-    fig, ax1 = plt.subplots(figsize=(8, 4.5), dpi=300)
+    fig, ax1 = plt.subplots(figsize=(8, 4.0), dpi=300)
     epochs = np.arange(1, 51)
     
     train_loss = 2.5 * np.exp(-epochs/10) + 0.15 + np.random.normal(0, 0.02, 50)
@@ -111,8 +110,8 @@ def generate_matplotlib_charts():
     map_50 = np.clip(map_50, 0, 98.6)
     
     color = '#1B365D'
-    ax1.set_xlabel('Epochs', fontsize=11, fontweight='bold')
-    ax1.set_ylabel('Box & Class Loss', color=color, fontsize=11, fontweight='bold')
+    ax1.set_xlabel('Epochs', fontsize=10.5, fontweight='bold')
+    ax1.set_ylabel('Box & Class Loss', color=color, fontsize=10.5, fontweight='bold')
     l1 = ax1.plot(epochs, train_loss, color='#1B365D', label='Train Loss', linewidth=2)
     l2 = ax1.plot(epochs, val_loss, color='#E74C3C', linestyle='--', label='Val Loss', linewidth=2)
     ax1.tick_params(axis='y', labelcolor=color)
@@ -120,7 +119,7 @@ def generate_matplotlib_charts():
     
     ax2 = ax1.twinx()
     color = '#27AE60'
-    ax2.set_ylabel('mAP @ 0.5 (%)', color=color, fontsize=11, fontweight='bold')
+    ax2.set_ylabel('mAP @ 0.5 (%)', color=color, fontsize=10.5, fontweight='bold')
     l3 = ax2.plot(epochs, map_50, color=color, label='mAP@0.5', linewidth=2.5)
     ax2.tick_params(axis='y', labelcolor=color)
     
@@ -128,7 +127,7 @@ def generate_matplotlib_charts():
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc='center right', frameon=True, facecolor='#F9F9F9')
     
-    plt.title('HAAZIR YOLOv8 Column Detection Model — Training & Accuracy Metrics', fontsize=12, fontweight='bold', pad=12)
+    plt.title('HAAZIR YOLOv8 Column Detection Model — Training & Accuracy Metrics', fontsize=11, fontweight='bold', pad=10)
     fig.tight_layout()
     chart1_path = os.path.join(IMG_DIR, "yolo_training_metrics.png")
     plt.savefig(chart1_path, dpi=300)
@@ -138,7 +137,7 @@ def generate_matplotlib_charts():
     # -----------------------------------------------------------------------
     # Figure 2: End-to-End Inference Latency Breakdown (ms)
     # -----------------------------------------------------------------------
-    fig, ax = plt.subplots(figsize=(8, 4.2), dpi=300)
+    fig, ax = plt.subplots(figsize=(8, 3.8), dpi=300)
     stages = [
         'Image Upload\n(Multipart)',
         'OpenCV Deskew\n(Homography)',
@@ -150,14 +149,14 @@ def generate_matplotlib_charts():
     colors = ['#34495E', '#2980B9', '#1B365D', '#8E44AD', '#27AE60']
     
     bars = ax.bar(stages, latencies, color=colors, width=0.55, edgecolor='#1B365D', linewidth=1)
-    ax.set_ylabel('Latency (Milliseconds)', fontsize=11, fontweight='bold')
-    ax.set_title('End-to-End Processing Latency Breakdown (Total ~334ms)', fontsize=12, fontweight='bold', pad=12)
+    ax.set_ylabel('Latency (Milliseconds)', fontsize=10.5, fontweight='bold')
+    ax.set_title('End-to-End Processing Latency Breakdown (Total ~334ms)', fontsize=11, fontweight='bold', pad=10)
     ax.set_ylim(0, 140)
     ax.grid(axis='y', linestyle=':', alpha=0.7)
     
     for bar in bars:
         yval = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2.0, yval + 3, f'{yval} ms', ha='center', va='bottom', fontweight='bold', fontsize=10)
+        ax.text(bar.get_x() + bar.get_width()/2.0, yval + 3, f'{yval} ms', ha='center', va='bottom', fontweight='bold', fontsize=9.5)
         
     fig.tight_layout()
     chart2_path = os.path.join(IMG_DIR, "latency_benchmark.png")
@@ -166,18 +165,18 @@ def generate_matplotlib_charts():
     print(f"[MATPLOTLIB OK] {os.path.basename(chart2_path)}")
 
     # -----------------------------------------------------------------------
-    # Figure 3: Matplotlib Implementation Schedule (Gantt Chart)
+    # Figure 3: Matplotlib Implementation Schedule (Gantt Chart - Compact Height)
     # -----------------------------------------------------------------------
-    fig, ax = plt.subplots(figsize=(10, 5.2), dpi=300)
+    fig, ax = plt.subplots(figsize=(8.5, 4.2), dpi=300)
     tasks = [
         ("Phase 1: Requirements & Clean Arch", "2026-06-01", "2026-06-15", "#1B365D"),
         ("Phase 1: 3NF Relational DB Schema", "2026-06-10", "2026-06-25", "#2B4C7E"),
-        ("Phase 2: JWT Auth & Multi-Tenant Engine", "2026-06-22", "2026-07-08", "#3B629B"),
+        ("Phase 2: JWT Auth & Multi-Tenant", "2026-06-22", "2026-07-08", "#3B629B"),
         ("Phase 2: Module 3.0 Synthetic Engine", "2026-07-01", "2026-07-15", "#4B78B7"),
         ("Phase 3: YOLO Dataset & Annotations", "2026-07-10", "2026-07-28", "#E67E22"),
         ("Phase 3: YOLOv8 Fine-Tuning", "2026-07-22", "2026-08-08", "#D35400"),
         ("Phase 3: OpenCV Deskew Pipeline", "2026-08-01", "2026-08-16", "#C0392B"),
-        ("Phase 4: Text-to-SQL Analytics Engine", "2026-08-10", "2026-08-25", "#8E44AD"),
+        ("Phase 4: Text-to-SQL Analytics", "2026-08-10", "2026-08-25", "#8E44AD"),
         ("Phase 4: Fee Engine & Razorpay Webhook", "2026-08-18", "2026-09-02", "#16A085"),
         ("Phase 5: React 19 Web Admin Dashboard", "2026-08-25", "2026-09-12", "#27AE60"),
         ("Phase 5: React Native Expo Mobile App", "2026-09-01", "2026-09-18", "#2980B9"),
@@ -191,26 +190,26 @@ def generate_matplotlib_charts():
     colors = [t[3] for t in tasks]
     labels = [t[0] for t in tasks]
 
-    bars = ax.barh(y_pos, durations, left=start_dates, height=0.55, align='center', color=colors, edgecolor='#ffffff', linewidth=1.2)
+    bars = ax.barh(y_pos, durations, left=start_dates, height=0.55, align='center', color=colors, edgecolor='#ffffff', linewidth=1.0)
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(labels, fontsize=9.5, fontweight='bold', color='#1E293B')
+    ax.set_yticklabels(labels, fontsize=8.5, fontweight='bold', color='#1E293B')
     ax.invert_yaxis()
 
     ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=2))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-    plt.xticks(fontsize=9, fontweight='bold', color='#334155')
+    plt.xticks(fontsize=8.5, fontweight='bold', color='#334155')
 
     ax.grid(True, axis='x', linestyle='--', alpha=0.5, color='#CBD5E1')
     ax.set_axisbelow(True)
 
-    ax.set_title("HAAZIR Project Implementation Schedule (16-Week Gantt Timeline)", fontsize=11.5, fontweight='bold', pad=14, color='#1B365D')
+    ax.set_title("HAAZIR Project Implementation Schedule (16-Week Gantt Timeline)", fontsize=10.5, fontweight='bold', pad=10, color='#1B365D')
     
     for bar, dur in zip(bars, durations):
         width = bar.get_width()
         x_loc = bar.get_x() + width / 2
         y_loc = bar.get_y() + bar.get_height() / 2
-        ax.text(x_loc, y_loc, f"{dur}d", ha='center', va='center', color='white', fontweight='bold', fontsize=8)
+        ax.text(x_loc, y_loc, f"{dur}d", ha='center', va='center', color='white', fontweight='bold', fontsize=7.5)
 
     for spine in ['top', 'right', 'left']:
         ax.spines[spine].set_visible(False)
@@ -223,81 +222,63 @@ def generate_matplotlib_charts():
     print(f"[MATPLOTLIB GANTT OK] {os.path.basename(gantt_path)}")
 
 
-def rotate_and_save(img_filename: str, angle: int):
-    """Rotates an image using PIL expand=True and saves as {basename}_landscape_{angle}.png."""
-    path = os.path.join(IMG_DIR, img_filename)
-    if os.path.exists(path):
-        im = Image.open(path)
-        rotated = im.rotate(angle, expand=True)
-        base, ext = os.path.splitext(img_filename)
-        out_name = f"{base}_landscape_{angle}{ext}"
-        out_path = os.path.join(IMG_DIR, out_name)
-        rotated.save(out_path)
-        print(f"[ROTATE OK] {img_filename} rotated {angle}° -> {out_name}")
-
 def main():
     generate_matplotlib_charts()
 
     mermaid_diagrams = {
+        # 1. Master System Architecture (Compact)
         "system_architecture.png": """
         flowchart TB
             subgraph CLIENT["Client Layer (Web & Mobile)"]
-                WEB["React 19 Admin Dashboard<br/>(Vite, Tailwind v4, Recharts)"]
-                MOB["React Native Expo App<br/>(Camera, HITL Dialog, Inbox)"]
+                WEB["React 19 Admin Dashboard"]
+                MOB["React Native Expo App"]
             end
 
-            subgraph GATEWAY["API Gateway & Security Layer"]
-                API["FastAPI Application Factory<br/>(ASGI / Uvicorn Server)"]
-                AUTH["JWT Auth & Role-Based Access<br/>(ADMIN, TEACHER, PARENT, etc.)"]
-                RLI["Multi-Tenant Isolation<br/>(tenant_id Scoping Middleware)"]
+            subgraph GATEWAY["API Gateway & Security"]
+                API["FastAPI App Factory"]
+                AUTH["JWT Auth & RBAC"]
+                RLI["Multi-Tenant Isolation"]
             end
 
             subgraph LOGIC["Business & AI Logic Layer"]
-                VISION["YOLO Vision Engine<br/>(OpenCV Homography + YOLOv8)"]
-                SQL_ENG["Text-to-SQL Query Engine<br/>(Groq / Gemini LLM + AST Guardrails)"]
-                FEE_ENG["Fee Management Engine<br/>(Razorpay Webhooks & Invoicing)"]
-                NOTIF_ENG["Notification Engine<br/>(FCM Push + In-App Inbox)"]
+                VISION["YOLO Vision Engine"]
+                SQL_ENG["Text-to-SQL Analytics"]
+                FEE_ENG["Fee Management Engine"]
+                NOTIF_ENG["Notification Engine"]
             end
 
-            subgraph DATA["Data & Persistence Layer"]
-                DB[("Relational Database<br/>PostgreSQL / SQLite 3NF")]
+            subgraph DATA["Data & Persistence"]
+                DB[("PostgreSQL / SQLite 3NF")]
                 ALEMBIC["Alembic Migration Engine"]
             end
 
-            CLIENT -->|HTTPS / JSON REST| GATEWAY
+            CLIENT -->|HTTPS REST| GATEWAY
             GATEWAY --> LOGIC
             LOGIC --> DATA
         """,
 
+        # 2. Compact Upright Portrait Computer Vision Pipeline (3 Horizontal Row Blocks)
         "cv_pipeline_flowchart.png": """
-        flowchart LR
-            subgraph S1["1. Acquisition & Preprocessing"]
-                direction TB
-                A["📷 Mobile App Capture"] --> B["Multipart POST /api/v1/vision/scan"]
-                B --> C["OpenCV GaussianBlur & Otsu Binarization"]
+        flowchart TD
+            subgraph STAGE1["1. Image Acquisition & OpenCV Preprocessing"]
+                direction LR
+                A["📷 Mobile Camera"] --> B["Multipart POST /api/v1/vision/scan"] --> C["GaussianBlur (5x5, σ=1.0) & Otsu Binarization"]
             end
 
-            subgraph S2["2. Perspective Deskew"]
-                direction TB
-                D1["cv2.findContours & approxPolyDP"] --> D2["4-Point Homography H"]
-                D2 --> D3["cv2.warpPerspective Deskewed Image"]
+            subgraph STAGE2["2. Document Deskew & YOLO Column Detection"]
+                direction LR
+                D1["findContours & approxPolyDP"] --> D2["4-Point Homography H & Deskew"] --> D3["YOLOv8 Detection Head (NMS > 0.6)"]
             end
 
-            subgraph S3["3. YOLO Column & Grid"]
-                direction TB
-                E1["YOLOv8 Detection Head (NMS > 0.6)"] --> E2["Roll, Name & Mark Column Bounding Boxes"]
-                E2 --> E3["Vertical Strip Cell Grid Slicing"]
+            subgraph STAGE3["3. Grid Slicing, MobileNet & DB Ingestion"]
+                direction LR
+                E1["Cell Strip Slicing"] --> E2["MobileNetV3 Classifier (P/A/L/Blank)"] --> E3["HITL Dialog & Bulk DB Ingestion / FCM"]
             end
 
-            subgraph S4["4. MobileNet & Ingestion"]
-                direction TB
-                F1["MobileNetV3 Classifier (P/A/L/Blank)"] --> F2["HITL Verification Dialog (Conf ≥85%)"]
-                F2 --> F3["Bulk DB Commit & FCM Parent Alerts"]
-            end
-
-            S1 --> S2 --> S3 --> S4
+            STAGE1 --> STAGE2 --> STAGE3
         """,
 
+        # 3. Context 0-Level DFD
         "dfd0_context.png": """
         flowchart LR
             TEACHER["TEACHER"]
@@ -327,6 +308,7 @@ def main():
             SYS -->|Push Notification Delivery| FCM
         """,
 
+        # 4. 1-Level Decomposed DFD
         "dfd1_decomposed.png": """
         flowchart TD
             subgraph ENTITIES["External Entities"]
@@ -369,6 +351,7 @@ def main():
             P6 -->|Query Database| D2 & D4 & D1
         """,
 
+        # 5. Entity-Relationship ER Diagram
         "er_diagram.png": """
         erDiagram
             USERS ||--o{ CLASS_SECTIONS : "class_teacher_of"
@@ -442,23 +425,17 @@ def main():
             }
         """,
 
+        # 6. Compact Upright Portrait Dual Methodology Framework
         "methodology_framework.png": """
-        flowchart LR
-            subgraph AGILE["Software Track: Agile Scrum Framework"]
-                direction TB
-                S1["1. Sprint Planning"] --> S2["2. Daily Standup"]
-                S2 --> S3["3. Feature Dev (API/Web/Mobile)"]
-                S3 --> S4["4. Sprint Review & Demo"]
-                S4 --> S5["5. Retrospective"]
-                S5 --> S1
+        flowchart TD
+            subgraph AGILE["Software Engineering Track: Agile Scrum Framework"]
+                direction LR
+                S1["1. Sprint Planning"] --> S2["2. Daily Standup & Dev"] --> S3["3. Review & Retrospective"]
             end
 
-            subgraph CRISP["AI & CV Track: CRISP-DM Process"]
-                direction TB
-                C1["1. Business Understanding"] --> C2["2. Data Prep & Annotation"]
-                C2 --> C3["3. YOLOv8 Model Training"]
-                C4["5. ONNX Model Export"] <-- C3
-                C3 --> C5["4. Validation Evaluation"]
+            subgraph CRISP["AI & Computer Vision Track: CRISP-DM Process"]
+                direction LR
+                C1["1. Business & Data Prep"] --> C2["2. YOLOv8 Model Training"] --> C3["3. Evaluation & ONNX Export"]
             end
 
             AGILE <===>|"API & Model Contract Integration"| CRISP
@@ -468,12 +445,6 @@ def main():
     for fname, code in mermaid_diagrams.items():
         out_path = os.path.join(IMG_DIR, fname)
         asyncio.run(render_mermaid(code, out_path))
-
-    # Generate rotated landscape versions (90° and 270°) for the 3 target diagrams
-    target_diagrams = ["cv_pipeline_flowchart.png", "methodology_framework.png", "gantt_chart.png"]
-    for diag in target_diagrams:
-        rotate_and_save(diag, 90)
-        rotate_and_save(diag, 270)
 
 if __name__ == "__main__":
     main()
