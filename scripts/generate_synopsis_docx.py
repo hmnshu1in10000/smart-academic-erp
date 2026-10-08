@@ -183,12 +183,12 @@ def add_heading1(doc, text: str, page_break_before=True):
     para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     para.paragraph_format.space_after = Pt(12)
     para.paragraph_format.space_before = Pt(6)
-    run = para.add_run(text)
+    # Sections: 14 pts bold left aligned (Capital Letters)
+    run = para.add_run(text.upper())
     run.font.name = FONT
-    run.font.size = Pt(16)
+    run.font.size = Pt(14)
     run.font.bold = True
-    run.font.color.rgb = NAVY
-    # Add underline via border bottom effect
+    run.font.color.rgb = BLACK
     return para
 
 
@@ -197,16 +197,18 @@ def add_heading2(doc, text: str):
     para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     para.paragraph_format.space_after = Pt(6)
     para.paragraph_format.space_before = Pt(6)
-    run = para.add_run(text)
+    # Subsections: 12 pts bold left aligned (Title case)
+    run = para.add_run(text.title() if not text.isupper() else text)
     run.font.name = FONT
-    run.font.size = Pt(14)
+    run.font.size = Pt(12)
     run.font.bold = True
-    run.font.color.rgb = NAVY
+    run.font.color.rgb = BLACK
     return para
 
 
 def add_heading3(doc, text: str):
     para = doc.add_paragraph()
+    para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     para.paragraph_format.space_after = Pt(4)
     para.paragraph_format.space_before = Pt(4)
     run = para.add_run(text)
@@ -338,51 +340,61 @@ def make_navy_table(doc, headers: list, rows: list, col_widths=None):
 
 
 def add_header_footer(doc):
-    """Add right-aligned header and centered footer page number."""
+    """
+    Configures headers and footers per printing specifications:
+    - NO headers on any page (hardcopy printout setting).
+    - Section 1 (Preliminaries): Bottom-centered Roman numerals (i, ii, iii...).
+    - Section 2 (Main Chapters): Bottom-centered Arabic numerals (1, 2, 3...) starting at 1.
+    """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
-    section = doc.sections[0]
-    section.different_first_page_header_footer = False
+    for idx, section in enumerate(doc.sections):
+        # Explicitly remove header content across all sections
+        header = section.header
+        header.is_linked_to_previous = False
+        for p in list(header.paragraphs):
+            p.clear()
 
-    # Header
-    header = section.header
-    header.is_linked_to_previous = False
-    if header.paragraphs:
-        hpara = header.paragraphs[0]
-    else:
-        hpara = header.add_paragraph()
-    hpara.clear()
-    hpara.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    run = hpara.add_run("Department of Computer Applications, DR. VSIPS  |  Project HAAZIR Synopsis")
-    run.font.name = FONT
-    run.font.size = Pt(9)
-    run.font.italic = True
-    run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+        # Footer configuration
+        footer = section.footer
+        footer.is_linked_to_previous = False
+        if footer.paragraphs:
+            fpara = footer.paragraphs[0]
+        else:
+            fpara = footer.add_paragraph()
+        fpara.clear()
+        fpara.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # Footer with page numbers
-    footer = section.footer
-    footer.is_linked_to_previous = False
-    if footer.paragraphs:
-        fpara = footer.paragraphs[0]
-    else:
-        fpara = footer.add_paragraph()
-    fpara.clear()
-    fpara.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = fpara.add_run()
+        run.font.name = FONT
+        run.font.size = Pt(12)
+        run.font.color.rgb = BLACK
 
-    run = fpara.add_run()
-    run.font.name = FONT
-    run.font.size = Pt(10)
+        fldChar1 = OxmlElement('w:fldChar')
+        fldChar1.set(qn('w:fldCharType'), 'begin')
+        instrText = OxmlElement('w:instrText')
+        instrText.text = ' PAGE '
+        fldChar2 = OxmlElement('w:fldChar')
+        fldChar2.set(qn('w:fldCharType'), 'end')
+        run._r.append(fldChar1)
+        run._r.append(instrText)
+        run._r.append(fldChar2)
 
-    fldChar1 = OxmlElement('w:fldChar')
-    fldChar1.set(qn('w:fldCharType'), 'begin')
-    instrText = OxmlElement('w:instrText')
-    instrText.text = ' PAGE '
-    fldChar2 = OxmlElement('w:fldChar')
-    fldChar2.set(qn('w:fldCharType'), 'end')
-    run._r.append(fldChar1)
-    run._r.append(instrText)
-    run._r.append(fldChar2)
+        # Set page number format on section XML
+        sectPr = section._sectPr
+        # Remove existing pgNumType if any
+        for existing in sectPr.findall(qn('w:pgNumType')):
+            sectPr.remove(existing)
+        pgNumType = OxmlElement('w:pgNumType')
+        if idx == 0:
+            # Preliminaries: Roman lower-case (i, ii, iii...)
+            pgNumType.set(qn('w:fmt'), 'lowerRoman')
+        else:
+            # Main Chapters: Decimal numbers (1, 2, 3...) starting at 1
+            pgNumType.set(qn('w:fmt'), 'decimal')
+            pgNumType.set(qn('w:start'), '1')
+        sectPr.append(pgNumType)
 
 
 # ---------------------------------------------------------------------------
@@ -392,12 +404,12 @@ def add_header_footer(doc):
 def setup_document():
     doc = Document()
     section = doc.sections[0]
-    section.page_width = Inches(8.27)    # A4 width
-    section.page_height = Inches(11.69)  # A4 height
-    section.left_margin = Inches(1.25)   # Gutter for spiral binding
-    section.right_margin = Inches(1.0)
-    section.top_margin = Inches(1.0)
-    section.bottom_margin = Inches(1.0)
+    section.page_width = Inches(8.27)    # A4 width: 210 mm
+    section.page_height = Inches(11.69)  # A4 height: 297 mm
+    section.left_margin = Inches(1.25)   # Left margin: 1.25" (32 mm gutter for binding)
+    section.right_margin = Inches(1.0)   # Right margin: 1.0" (25 mm)
+    section.top_margin = Inches(1.0)     # Top margin: 1.0" (25 mm)
+    section.bottom_margin = Inches(1.0)  # Bottom margin: 1.0" (25 mm)
 
     # Default paragraph style
     style = doc.styles['Normal']
@@ -669,7 +681,9 @@ def build_toc(doc):
 # ---------------------------------------------------------------------------
 
 def build_abstract(doc):
-    add_heading1(doc, "ABSTRACT")
+    # Insert Section Break between Preliminaries and Main Chapters
+    doc.add_section()
+    add_heading1(doc, "CHAPTER 1: ABSTRACT", page_break_before=False)
     paras = [
         "HAAZIR is a production-grade, hybrid Academic Enterprise Resource Planning (ERP) system purpose-built to address the chronic inefficiencies in student attendance management, fee collection, academic analytics, and institutional communication at scale in Indian educational institutions. The name HAAZIR (Hindi: हाज़िर, meaning 'present' or 'in attendance') reflects the system's primary operational mandate: the accurate, real-time, and verifiable tracking of student presence across academic sessions.",
         "The project's defining technical contribution is its custom-trained YOLO (You Only Look Once) computer vision pipeline integrated as a core attendance ingestion channel. Unlike existing digital attendance systems that mandate full adoption of touchscreen or biometric hardware — thereby replacing the familiar pen-and-paper register workflow — HAAZIR takes a fundamentally different approach: it digitizes the physical attendance register itself. A teacher or administrative staff member photographs the completed handwritten attendance register using any standard smartphone. HAAZIR's YOLO-based model, trained on a synthetic dataset of annotated register grids, then performs: (1) document boundary detection using OpenCV's four-point homographic perspective correction algorithm to produce a deskewed, front-facing image, (2) column-wise YOLO detection head inference to identify the column semantics (Student Roll, Name, P/A/L marks), (3) cell-level slicing to extract individual attendance mark cells, and (4) a character classification sub-model to parse handwritten marks — distinguishing ticks, crosses, 'P', 'A', and 'L' notations — achieving a target character-level mean Average Precision (mAP@0.5) of greater than 95 percent.",
