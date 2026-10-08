@@ -596,84 +596,111 @@ def build_certificate(doc):
 # ---------------------------------------------------------------------------
 
 def build_toc(doc):
-    add_heading1(doc, "TABLE OF CONTENTS")
-    toc_entries = [
-        ("1", "Title / Cover Page", "1"),
-        ("2", "Acknowledgment", "2"),
-        ("3", "Institutional Certificate", "3"),
-        ("4", "Table of Contents / List of Figures / List of Tables", "4"),
-        ("5", "Abstract", "5"),
-        ("6", "Introduction", "7"),
-        ("  6.1", "Problem Domain & Indian Attendance Crisis", "7"),
-        ("  6.2", "About the HAAZIR Project", "9"),
-        ("7", "Objectives & Key Differentiating Features", "11"),
-        ("8", "Project Category & Beneficiary Analysis", "14"),
-        ("9", "Feasibility Study", "16"),
-        ("10", "Methodology & Planning Work", "19"),
-        ("11", "Tools & Technologies Used", "23"),
-        ("12", "Platform Used (Hardware & Software)", "27"),
-        ("13", "Comprehensive Module Description", "29"),
-        ("  13.1", "Module 1.0: Core Infrastructure & Multi-Tenant Config Engine", "29"),
-        ("  13.2", "Module 2.0: Identity, Access & Role-Based Security", "30"),
-        ("  13.3", "Module 3.0: High-Speed Synthetic Data Engine", "31"),
-        ("  13.4", "Module 4.0: Student & Academic Management Module", "31"),
-        ("  13.5", "Module 5.0: YOLO Vision & Register Digitization Engine (FLAGSHIP)", "32"),
-        ("  13.6", "Module 6.0: Attendance Ingestion & Audit Service", "34"),
-        ("  13.7", "Module 7.0: Fee Management & Payment Ledger Module", "34"),
-        ("  13.8", "Module 8.0: Parent Notification & Communication Engine", "35"),
-        ("  13.9", "Module 9.0: Conversational Text-to-SQL Analytics Engine", "35"),
-        ("  13.10", "Module 10.0: Web Portal & Mobile UI Interfaces", "36"),
-        ("14", "System Design & Flow Diagrams", "37"),
-        ("15", "Data Tables — Complete Data Dictionary", "42"),
-        ("16", "Future Scope", "50"),
-        ("17", "Conclusion", "52"),
-        ("18", "Bibliography / References", "53"),
-    ]
-    make_navy_table(doc,
-        headers=["S.No.", "Section Title", "Page No."],
-        rows=toc_entries,
-        col_widths=[0.7, 4.8, 0.8]
-    )
+    from docx.enum.text import WD_TAB_ALIGNMENT, WD_TAB_LEADER
 
+    def add_toc_line(doc, prefix: str, title: str, page_no: str, is_subsection=False):
+        para = doc.add_paragraph()
+        para.paragraph_format.space_before = Pt(2)
+        para.paragraph_format.space_after = Pt(2)
+        para.paragraph_format.line_spacing = 1.15
+        
+        # Available text width = 6.02 inches (1.25" left margin, 1.0" right margin)
+        # Right tab stop at 6.02 inches with DOT leader
+        tab_stops = para.paragraph_format.tab_stops
+        tab_stops.add_tab_stop(Inches(6.02), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+
+        if is_subsection:
+            para.paragraph_format.left_indent = Inches(0.3)
+
+        run_title = para.add_run(f"{prefix}\t{title}" if prefix else title)
+        run_title.font.name = FONT
+        run_title.font.size = Pt(11)
+        if not is_subsection and prefix in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18"]:
+            run_title.font.bold = True
+
+        run_dots = para.add_run("\t")
+        run_dots.font.name = FONT
+        run_dots.font.size = Pt(11)
+
+        run_page = para.add_run(str(page_no))
+        run_page.font.name = FONT
+        run_page.font.size = Pt(11)
+        if not is_subsection and prefix in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18"]:
+            run_page.font.bold = True
+
+    add_heading1(doc, "TABLE OF CONTENTS")
+    
+    toc_entries = [
+        ("1", "Title / Cover Page", "i", False),
+        ("2", "Acknowledgment", "ii", False),
+        ("3", "Institutional Certificate", "iii", False),
+        ("4", "Table of Contents / List of Figures / List of Tables", "iv", False),
+        ("5", "Chapter 1: Abstract", "1", False),
+        ("6", "Chapter 2: Introduction", "3", False),
+        ("6.1", "Problem Domain & Indian Attendance Crisis", "3", True),
+        ("6.2", "About the HAAZIR Project", "5", True),
+        ("7", "Chapter 3: Objectives & Key Differentiating Features", "7", False),
+        ("8", "Chapter 4: Project Category & Beneficiary Analysis", "10", False),
+        ("9", "Chapter 5: Feasibility Study", "12", False),
+        ("10", "Chapter 6: Methodology & Planning Work", "15", False),
+        ("11", "Chapter 7: Tools & Technologies Used", "19", False),
+        ("12", "Chapter 8: Platform Used (Hardware & Software)", "23", False),
+        ("13", "Chapter 9: Comprehensive Module Description", "25", False),
+        ("13.1", "Module 1.0: Core Infrastructure & Multi-Tenant Config Engine", "25", True),
+        ("13.2", "Module 2.0: Identity, Access & Role-Based Security", "26", True),
+        ("13.3", "Module 3.0: High-Speed Synthetic Data Engine", "27", True),
+        ("13.4", "Module 4.0: Student & Academic Management Module", "27", True),
+        ("13.5", "Module 5.0: YOLO Vision & Register Digitization Engine (FLAGSHIP)", "28", True),
+        ("13.6", "Module 6.0: Attendance Ingestion & Audit Service", "30", True),
+        ("13.7", "Module 7.0: Fee Management & Payment Ledger Module", "30", True),
+        ("13.8", "Module 8.0: Parent Notification & Communication Engine", "31", True),
+        ("13.9", "Module 9.0: Conversational Text-to-SQL Analytics Engine", "31", True),
+        ("13.10", "Module 10.0: Web Portal & Mobile UI Interfaces", "32", True),
+        ("14", "Chapter 10: System Design & Flow Diagrams", "33", False),
+        ("15", "Chapter 11: Data Tables — Complete Data Dictionary", "38", False),
+        ("16", "Chapter 12: Future Scope", "46", False),
+        ("17", "Chapter 13: Conclusion", "48", False),
+        ("18", "Chapter 14: Bibliography / References", "49", False),
+    ]
+
+    for num, title, page, is_sub in toc_entries:
+        add_toc_line(doc, num, title, page, is_sub)
+
+    doc.add_paragraph()
     add_heading2(doc, "List of Figures")
     fig_entries = [
-        ("Fig. 1", "YOLO Vision & Register Digitization Pipeline Flowchart", "38"),
-        ("Fig. 2", "Context-Level (0-Level) Data Flow Diagram", "39"),
-        ("Fig. 3", "Level-1 Decomposed Data Flow Diagram", "40"),
-        ("Fig. 4", "Entity-Relationship (ER) Diagram — 3NF Schema", "41"),
-        ("Fig. 5", "System Architecture — Multi-Tier Hybrid Deployment", "29"),
-        ("Fig. 6", "RBAC Role Hierarchy Diagram", "30"),
-        ("Fig. 7", "Text-to-SQL AST Guardrails Processing Flow", "36"),
+        ("Fig. 1", "YOLO Vision & Register Digitization Pipeline Flowchart", "34"),
+        ("Fig. 2", "Context-Level (0-Level) Data Flow Diagram", "35"),
+        ("Fig. 3", "Level-1 Decomposed Data Flow Diagram", "36"),
+        ("Fig. 4", "Entity-Relationship (ER) Diagram — 3NF Schema", "37"),
+        ("Fig. 5", "System Architecture — Multi-Tier Hybrid Deployment", "25"),
+        ("Fig. 6", "RBAC Role Hierarchy Diagram", "26"),
+        ("Fig. 7", "Text-to-SQL AST Guardrails Processing Flow", "32"),
     ]
-    make_navy_table(doc,
-        headers=["Figure No.", "Caption", "Page No."],
-        rows=fig_entries,
-        col_widths=[1.0, 4.5, 0.8]
-    )
+    for num, title, page in fig_entries:
+        add_toc_line(doc, num, title, page, False)
 
+    doc.add_paragraph()
     add_heading2(doc, "List of Tables")
     tbl_entries = [
-        ("Table 1", "Comparative Analysis: HAAZIR vs. Commercial ERP Platforms", "13"),
-        ("Table 2", "Beneficiary Stakeholder Analysis Matrix", "15"),
-        ("Table 3", "Feasibility Assessment Summary", "18"),
-        ("Table 4", "Sprint-Wise Project Schedule (Gantt Summary)", "22"),
-        ("Table 5", "Tools & Technologies Reference Matrix", "26"),
-        ("Table 6", "Hardware & Software Platform Specifications", "28"),
-        ("Table 7", "Data Dictionary — users Table", "42"),
-        ("Table 8", "Data Dictionary — class_sections Table", "43"),
-        ("Table 9", "Data Dictionary — students Table", "44"),
-        ("Table 10", "Data Dictionary — register_scans Table", "45"),
-        ("Table 11", "Data Dictionary — attendance_records Table", "46"),
-        ("Table 12", "Data Dictionary — fee_structures Table", "47"),
-        ("Table 13", "Data Dictionary — fee_invoices Table", "47"),
-        ("Table 14", "Data Dictionary — timetable_entries Table", "48"),
-        ("Table 15", "Data Dictionary — in_app_notifications Table", "49"),
+        ("Table 1", "Comparative Analysis: HAAZIR vs. Commercial ERP Platforms", "9"),
+        ("Table 2", "Beneficiary Stakeholder Analysis Matrix", "11"),
+        ("Table 3", "Feasibility Assessment Summary", "14"),
+        ("Table 4", "Sprint-Wise Project Schedule (Gantt Summary)", "18"),
+        ("Table 5", "Tools & Technologies Reference Matrix", "22"),
+        ("Table 6", "Hardware & Software Platform Specifications", "24"),
+        ("Table 7", "Data Dictionary — users Table", "38"),
+        ("Table 8", "Data Dictionary — class_sections Table", "39"),
+        ("Table 9", "Data Dictionary — students Table", "40"),
+        ("Table 10", "Data Dictionary — register_scans Table", "41"),
+        ("Table 11", "Data Dictionary — attendance_records Table", "42"),
+        ("Table 12", "Data Dictionary — fee_structures Table", "43"),
+        ("Table 13", "Data Dictionary — fee_invoices Table", "43"),
+        ("Table 14", "Data Dictionary — timetable_entries Table", "44"),
+        ("Table 15", "Data Dictionary — in_app_notifications Table", "45"),
     ]
-    make_navy_table(doc,
-        headers=["Table No.", "Caption", "Page No."],
-        rows=tbl_entries,
-        col_widths=[1.0, 4.5, 0.8]
-    )
+    for num, title, page in tbl_entries:
+        add_toc_line(doc, num, title, page, False)
 
 
 # ---------------------------------------------------------------------------
